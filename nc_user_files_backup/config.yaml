@@ -6,7 +6,7 @@ url: "https://github.com/alekslegkih/hassio-addons"
 arch:
   - aarch64
   - amd64
-image: "ghcr.io/alekslegkih/nc_user_files_backup-{arch}"
+image: "ghcr.io/alekslegkih/nc_user_files_backup"
 startup: once
 boot: manual
 init: false
