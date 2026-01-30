@@ -1,0 +1,34 @@
+# =============================================================================
+# All environment variables defined in this file are intended 
+# for configuring the Nextcloud user files backup addon.
+# =============================================================================
+#
+# WARNING: Configuration changes require ADDON RESTART to take effect!
+# After editing this file, restart the addon from Home Assistant UI.
+#
+# This file must be filled according to the yaml format.
+# If the format is invalid, the addon will note an error.
+# To validate your yaml, you can use the free online tool http://www.yamllint.com/
+#
+# =============================================================================
+
+general:
+  timezone: "Europe/Moscow"
+  rsync_options: "-aHAX --delete"
+  test_mode: false
+
+storage:
+  mount_path: "media"
+  label_backup: "NC_backup"
+  label_data: "Data"
+  data_dir: "data"
+
+power:
+  enable_power: true
+  disc_switch: "usb_disk_power"
+
+notifications:
+  enable_notifications: true
+  notification_service: "telegram_cannel_system"
+  success_message: "Nextcloud user files backup completed successfully!"
+  error_message: "Nextcloud backup completed with errors!"
