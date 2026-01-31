@@ -1,8 +1,31 @@
 #!/bin/bash
 set -euo pipefail
 
+# -----------------------------------------------------------
+# Lock to prevent parallel runs
+# -----------------------------------------------------------
+LOCKFILE="/data/backup.lock"
+
+if [ -e "$LOCKFILE" ]; then
+    if [ "$(find "$LOCKFILE" -mmin +720)" ]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Stale lock detected, removing"
+        rm -f "$LOCKFILE"
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') Backup already running. Exiting."
+        exit 0
+    fi
+fi
+
+touch "$LOCKFILE"
+
+cleanup() {
+    rm -f "$LOCKFILE"
+}
+trap cleanup EXIT
+
 # Load logging functions and colors
 source /etc/nc_backup/logging.sh
+
 # Load configuration
 source /etc/nc_backup/config.sh
 
