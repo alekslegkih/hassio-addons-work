@@ -8,5 +8,5 @@
 Ссылка на этот репозиторий
 
 ```htm
-https://github.com/alekslegkih/hassio-addons-
+https://github.com/alekslegkih/hassio-addons-work
 ```
