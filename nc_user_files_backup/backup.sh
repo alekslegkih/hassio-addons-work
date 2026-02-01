@@ -1,20 +1,28 @@
 #!/bin/bash
 set -euo pipefail
 
+# ===================================================
+# Paths
+# ===================================================
 LOG_FILE="/config/backup.log"
 LOCKFILE="/data/backup.lock"
 
-echo "==== CRON TRIGGER $(date) ====" >> "$LOG_FILE"
+# ===================================================
+# Load logging
+# ===================================================
+source /etc/nc_backup/logging.sh
 
-# -----------------------------------------------------------
-# Lock to prevent parallel runs
-# -----------------------------------------------------------
+log_section "CRON TRIGGER $(date)"
+
+# ===================================================
+# Lock (prevent parallel runs)
+# ===================================================
 if [ -e "$LOCKFILE" ]; then
-    if find "$LOCKFILE" -mmin +720 >/dev/null 2>&1; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Stale lock detected, removing" >> "$LOG_FILE"
+    if [ "$(find "$LOCKFILE" -mmin +720 2>/dev/null)" ]; then
+        log_yellow "Stale lock detected, removing"
         rm -f "$LOCKFILE"
     else
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Backup already running. Exiting." >> "$LOG_FILE"
+        log_yellow "Backup already running, exiting"
         exit 0
     fi
 fi
@@ -22,119 +30,172 @@ fi
 touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
-# -----------------------------------------------------------
-# Load logging + config лог удалим
-# -----------------------------------------------------------
-source /etc/nc_backup/logging.sh
+# ===================================================
+# Load configuration
+# ===================================================
 source /etc/nc_backup/config.sh
 
-# -----------------------------------------------------------
-# Supervisor API helper
-# -----------------------------------------------------------
+# ===================================================
+# Header
+# ===================================================
+log_section "Nextcloud User Files Backup"
+
+log "System: $(uname -s) $(uname -r)"
+log "Architecture: $(uname -m)"
+log "Timezone: $TIMEZONE"
+log "Backup disk: $MOUNT_POINT_BACKUP"
+log "Data source: $NEXTCLOUD_DATA_PATH"
+log "Power control: $ENABLE_POWER"
+log "Switch: $DISC_SWITCH_SELECT"
+log "Notifications: $ENABLE_NOTIFICATIONS"
+log "Service: $NOTIFICATION_SERVICE"
+
+# ===================================================
+# HA API helper (Supervisor)
+# ===================================================
 ha_api_call() {
-    local service="$1"
-    local payload="$2"
+    local endpoint="$1"
+    local payload="${2:-}"
 
     curl -s \
         -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
         -H "Content-Type: application/json" \
         -X POST \
         -d "$payload" \
-        "http://supervisor/core/api/services/$service"
+        "http://supervisor/core/api/$endpoint"
 }
 
-# -----------------------------------------------------------
-# Header
-# -----------------------------------------------------------
-print_header() {
-    echo -e "${BLUE}-----------------------------------------------------${NC}"
-    echo -e "${BLUE}Add-on:  Nextcloud User Files Backup${NC}"
-    echo -e "${BLUE}      for Home Assistant${NC}"
-    echo -e "${BLUE}-----------------------------------------------------${NC}"
-    echo -e "${BLUE}System: $(uname -s) $(uname -r)${NC}"
-    echo -e "${BLUE}Architecture: $(uname -m)${NC}"
-    echo -e "${BLUE}Timezone: $TIMEZONE${NC}"
-    echo -e "${BLUE}Backup disk: $MOUNT_POINT_BACKUP${NC}"
-    echo -e "${BLUE}Data source: $NEXTCLOUD_DATA_PATH${NC}"
-    echo -e "${BLUE}Power control: $ENABLE_POWER${NC}"
-    echo -e "${BLUE}Switch: $DISC_SWITCH_SELECT${NC}"
-    echo -e "${BLUE}Notifications: $ENABLE_NOTIFICATIONS${NC}"
-    echo -e "${BLUE}Service: $NOTIFICATION_SERVICE${NC}"
-    echo -e "${BLUE}-----------------------------------------------------${NC}"
+# ===================================================
+# Final handler
+# ===================================================
+handle_final_result() {
+    local success="$1"
+    local msg="$2"
+
+    if [ "$success" = true ]; then
+        log_green "Backup completed successfully"
+        FINAL_MSG="$SUCCESS_MESSAGE"
+    else
+        log_red "Backup failed: $msg"
+        FINAL_MSG="$msg"
+    fi
+
+    if [ "$ENABLE_NOTIFICATIONS" = "true" ]; then
+        log "Sending notification…"
+        PAYLOAD=$(jq -n --arg msg "$FINAL_MSG" '{"message":$msg}')
+        if ha_api_call "services/notify/$NOTIFICATION_SERVICE" "$PAYLOAD" >/dev/null; then
+            log_green "Notification sent"
+        else
+            log_red "Failed to send notification"
+        fi
+    fi
+
+    exit $([ "$success" = true ] && echo 0 || echo 1)
 }
 
-print_header >> "$LOG_FILE"
+# ===================================================
+# Start
+# ===================================================
+log_green "Starting user files backup"
 
-log_green "Starting user files backup" >> "$LOG_FILE"
-
-# -----------------------------------------------------------
-# Power ON disk
-# -----------------------------------------------------------
+# ===================================================
+# Power ON
+# ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
-    log "Turning ON backup disk power" >> "$LOG_FILE"
-    ha_api_call "switch/turn_on" \
-        "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')" >/dev/null
+    log "Turning ON backup disk power"
+    ha_api_call "services/switch/turn_on" \
+        "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
+
+    STATE="unknown"
+    for i in {1..30}; do
+        STATE=$(curl -s \
+            -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+            http://supervisor/core/api/states/$DISC_SWITCH_SELECT \
+            | jq -r '.state // "unknown"' || echo "unknown")
+
+        if [ "$STATE" = "on" ]; then
+            log_green "Disk power is ON"
+            break
+        fi
+
+        log "Waiting for disk power ($i/30), state=$STATE"
+        sleep 2
+    done
+
+    [ "$STATE" != "on" ] && handle_final_result false "Disk power did not turn on"
+    log "Waiting 40 seconds for disk initialization"
     sleep 40
 fi
 
-# -----------------------------------------------------------
-# Checks
-# -----------------------------------------------------------
-[ -d "$MOUNT_POINT_BACKUP" ] || handle_final_result false "Backup disk not mounted"
-[ -d "$NEXTCLOUD_DATA_PATH" ] || handle_final_result false "Nextcloud data not accessible"
+# ===================================================
+# Disk checks
+# ===================================================
+[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup disk not mounted"
 
-touch "$MOUNT_POINT_BACKUP/.write_test" 2>/dev/null \
-    && rm -f "$MOUNT_POINT_BACKUP/.write_test" \
-    || handle_final_result false "No write permission on backup disk"
+if touch "$MOUNT_POINT_BACKUP/.test" 2>/dev/null; then
+    rm -f "$MOUNT_POINT_BACKUP/.test"
+    log "Backup disk writable"
+else
+    handle_final_result false "Backup disk not writable"
+fi
 
-# -----------------------------------------------------------
-# Backup users
-# -----------------------------------------------------------
+[ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "Nextcloud data not found"
+
+# ===================================================
+# Users
+# ===================================================
 USERS=$(find "$NEXTCLOUD_DATA_PATH" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
-[ -n "$USERS" ] || handle_final_result false "No users found"
+[ -z "$USERS" ] && handle_final_result false "No users found"
 
+log "Users: $(echo "$USERS" | paste -sd ', ')"
+
+# ===================================================
+# Backup loop
+# ===================================================
 SUCCESS=true
 
 for user in $USERS; do
     SRC="$NEXTCLOUD_DATA_PATH/$user/files/"
     DST="$MOUNT_POINT_BACKUP/$user/"
 
-    [ -d "$SRC" ] || continue
-    mkdir -p "$DST"
+    [ ! -d "$SRC" ] && log_yellow "User $user has no files, skipping" && continue
 
-    log "Backing up user: $user" >> "$LOG_FILE"
+    mkdir -p "$DST"
+    log_blue "Backing up user: $user"
 
     if [ "$TEST_MODE" = "true" ]; then
-        sleep 3
+        sleep 5
+        log_purple "TEST MODE: simulated backup for $user"
     else
-        rsync $RSYNC_OPTIONS "$SRC" "$DST/" || SUCCESS=false
+        if rsync $RSYNC_OPTIONS "$SRC" "$DST/"; then
+            FILES=$(find "$DST" -type f | wc -l)
+            log_green "User $user done ($FILES files)"
+        else
+            log_red "User $user backup failed"
+            SUCCESS=false
+        fi
     fi
 done
 
-# -----------------------------------------------------------
+# ===================================================
 # Unmount + Power OFF
-# -----------------------------------------------------------
+# ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
-    log "Unmounting backup disk" >> "$LOG_FILE"
-    curl -s \
+    log "Unmounting backup disk"
+    curl -s -X POST \
         -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
         -H "Content-Type: application/json" \
-        -X POST \
         -d "{\"device\":\"$MOUNT_POINT_BACKUP\"}" \
-        http://supervisor/host/umount >/dev/null || true
+        http://supervisor/host/umount >/dev/null || log_yellow "Unmount failed"
 
-    log "Turning OFF backup disk power" >> "$LOG_FILE"
-    ha_api_call "switch/turn_off" \
-        "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')" >/dev/null
+    log "Turning OFF backup disk power"
+    ha_api_call "services/switch/turn_off" \
+        "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 fi
 
-# -----------------------------------------------------------
-# Notifications + exit
-# -----------------------------------------------------------
-if [ "$ENABLE_NOTIFICATIONS" = "true" ]; then
-    MSG=$([ "$SUCCESS" = true ] && echo "$SUCCESS_MESSAGE" || echo "$ERROR_MESSAGE")
-    ha_api_call "notify/$NOTIFICATION_SERVICE" \
-        "$(jq -n --arg m "$MSG" '{message:$m}')" >/dev/null || true
-fi
-
-[ "$SUCCESS" = true ] && exit 0 || exit 1
+# ===================================================
+# Finish
+# ===================================================
+[ "$SUCCESS" = true ] \
+    && handle_final_result true "" \
+    || handle_final_result false "One or more users failed"

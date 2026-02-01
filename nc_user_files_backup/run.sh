@@ -1,71 +1,54 @@
 #!/bin/bash
-set -e
-
-# -----------------------------------------------------------
-# Colors
-# -----------------------------------------------------------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-echo -e "${BLUE}-----------------------------------------------------------${NC}"
-echo -e "${BLUE} Starting Nextcloud User Files Backup Add-on${NC}"
-echo -e "${BLUE}-----------------------------------------------------------${NC}"
+set -euo pipefail
 
 # -----------------------------------------------------------
 # Load logging helpers
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
 
+log_blue "-----------------------------------------------------------"
+log_section  " Starting Nextcloud User Files Backup Add-on"
+log_blue "-----------------------------------------------------------"
+
 # -----------------------------------------------------------
 # Load backup configuration
 # -----------------------------------------------------------
-if [ -f /etc/nc_backup/config.sh ]; then
-    source /etc/nc_backup/config.sh
+CONFIG_FILE="/etc/nc_backup/config.sh"
+
+if [ -f "$CONFIG_FILE" ]; then
+    log "Loading configuration: $CONFIG_FILE"
+    source "$CONFIG_FILE"
 else
-    echo -e "${RED}Config file not found: /etc/nc_backup/config.sh${NC}"
+    log_red "Config file not found: $CONFIG_FILE"
     exit 1
 fi
 
+# -----------------------------------------------------------
+# Load and validate config
+# -----------------------------------------------------------
 load_config
 CONFIG_EXIT_CODE=$?
 
 case "$CONFIG_EXIT_CODE" in
     0)
-        echo -e "${GREEN}Backup configuration OK${NC}"
+        log_green "Backup configuration OK"
         ;;
     2)
-        echo -e "${YELLOW}-----------------------------------------------------------${NC}"
-        echo -e "${YELLOW} First run detected${NC}"
-        echo -e "${YELLOW} settings.yaml has been created${NC}"
-        echo -e "${YELLOW} Please edit it and restart the addon${NC}"
-        echo -e "${YELLOW}-----------------------------------------------------------${NC}"
+        log_yellow "-----------------------------------------------------------"
+        log_yellow " First run detected"
+        log_yellow " settings.yaml has been created"
+        log_yellow " Please edit it and restart the addon"
+        log_yellow "-----------------------------------------------------------"
         exit 0
         ;;
     *)
-        echo -e "${RED}-----------------------------------------------------------${NC}"
-        echo -e "${RED} Configuration error detected${NC}"
-        echo -e "${RED} Add-on stopped. See logs above for details${NC}"
-        echo -e "${RED}-----------------------------------------------------------${NC}"
+        log_red "-----------------------------------------------------------"
+        log_red " Configuration error detected"
+        log_red " Add-on stopped. See logs above for details"
+        log_red "-----------------------------------------------------------"
         exit 1
         ;;
 esac
-
-# -----------------------------------------------------------
-# In run.sh
-# -----------------------------------------------------------
-HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
-
-#if [ -z "$HA_TOKEN" ]; then
-#    echo -e "${RED}-----------------------------------------------------------${NC}"
-#    echo -e "${RED} Home Assistant token is not set${NC}"
-#    echo -e "${RED} Please configure ha_token in addon options${NC}"
-#    echo -e "${RED} Add-on stopped${NC}"
-#   echo -e "${RED}-----------------------------------------------------------${NC}"
-#   exit 1
-#fi
 
 # -----------------------------------------------------------
 # Load cron schedule from addon options
@@ -73,39 +56,46 @@ HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
 CRON=$(jq -r '.cron // empty' /data/options.json)
 
 if [ -z "$CRON" ]; then
-    echo -e "${RED}Cron schedule is not set in addon options${NC}"
+    log_red "Cron schedule is not set in addon options"
     exit 1
 fi
 
+log "Cron schedule from options: '$CRON'"
+
 # -----------------------------------------------------------
-# Validate cron format (must be 5 fields for busybox crond)
+# Validate cron format (busybox requires 5 fields)
 # -----------------------------------------------------------
 CRON_FIELDS=$(echo "$CRON" | awk '{print NF}')
 if [ "$CRON_FIELDS" -ne 5 ]; then
-    echo -e "${RED}Invalid cron format: '$CRON'${NC}"
-    echo -e "${YELLOW}Expected format: minute hour day month weekday${NC}"
-    echo -e "${YELLOW}Example: 0 3 * * *${NC}"
+    log_red "Invalid cron format: '$CRON'"
+    log_yellow "Expected format: minute hour day month weekday"
+    log_yellow "Example: 0 3 * * *"
     exit 1
 fi
+
+log_green "Cron format validation passed"
 
 # -----------------------------------------------------------
 # Install cron job
 # -----------------------------------------------------------
 CRON_FILE="/etc/crontabs/root"
-LOG_FILE="/config/backup.log"
 
-touch "$LOG_FILE"
-
-echo -e "${BLUE}Installing cron job:${NC} ${YELLOW}$CRON${NC}"
+log_blue "Installing cron job"
+log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
-$CRON /backup.sh >> $LOG_FILE 2>&1
+$CRON /backup.sh
 EOF
 
 chmod 600 "$CRON_FILE"
 
+log_green "Starting cron daemon..."
+exec crond -f -l 8
+
+log_green "Cron job installed successfully"
+
 # -----------------------------------------------------------
 # Start cron daemon
 # -----------------------------------------------------------
-echo -e "${GREEN}Starting cron daemon...${NC}"
+log_green "Starting cron daemon (foreground mode)"
 exec crond -f -l 8

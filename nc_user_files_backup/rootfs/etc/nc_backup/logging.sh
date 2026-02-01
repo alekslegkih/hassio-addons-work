@@ -1,39 +1,64 @@
 #!/bin/bash
 
-# --- Colors for logging
+LOG_FILE="/config/backup.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+touch "$LOG_FILE"
+
+# --- Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 PURPLE='\033[0;35m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# --- Logging functions with timestamp
+_ts() {
+    date '+%Y-%m-%d %H:%M:%S'
+}
+
+_log_raw() {
+    local colored="$1"
+    local plain="$2"
+
+    [ -z "$plain" ] && return 0
+
+    echo -e "$(_ts) $colored"
+    echo "$(_ts) $plain" >> "$LOG_FILE"
+}
+
+
 log() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') $1"
+    _log_raw "$1" "$1"
 }
 
 log_green() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${GREEN}$1${NC}"
+    _log_raw "${GREEN}$1${NC}" "$1"
 }
 
 log_yellow() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${YELLOW}$1${NC}"
+    _log_raw "${YELLOW}$1${NC}" "$1"
 }
 
 log_red() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${RED}$1${NC}"
+    _log_raw "${RED}$1${NC}" "$1"
 }
 
 log_blue() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${BLUE}$1${NC}"
+    _log_raw "${BLUE}$1${NC}" "$1"
 }
 
 log_cyan() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${CYAN}$1${NC}"
+    _log_raw "${CYAN}$1${NC}" "$1"
 }
 
 log_purple() {
-    echo -e "$(date '+%Y-%m-%d %H:%M:%S') ${PURPLE}$1${NC}"
+    _log_raw "${PURPLE}$1${NC}" "$1"
 }
+
+log_section() {
+    log_blue "====================================================="
+    log_blue "$1"
+    log_blue "====================================================="
+}
+
