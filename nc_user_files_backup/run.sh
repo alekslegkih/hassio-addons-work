@@ -9,6 +9,20 @@ source /etc/nc_backup/logging.sh
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
 # -----------------------------------------------------------
+# Load addon configuration
+# -----------------------------------------------------------
+OPTIONS_JSON="/data/options.json"
+
+if [ ! -r "$OPTIONS_JSON" ]; then
+    log_red "Cannot read addon options"
+    exit 1
+fi
+
+MANUAL_RUN=$(jq -r '.manual_run // false' "$OPTIONS_JSON")
+CRON=$(jq -r '.cron // empty' "$OPTIONS_JSON")
+
+
+# -----------------------------------------------------------
 # Load backup configuration
 # -----------------------------------------------------------
 CONFIG_FILE="/etc/nc_backup/config.sh"
@@ -75,8 +89,6 @@ fi
 # -----------------------------------------------------------
 # Load cron schedule from addon options
 # -----------------------------------------------------------
-CRON=$(jq -r '.cron // empty' /data/options.json)
-
 if [ -z "$CRON" ]; then
     log_red "Cron schedule is not set in addon options"
     exit 1
