@@ -125,9 +125,8 @@ load_config() {
 
     log "Using existing settings: $USER_CONFIG"
 
-    # --- Validate
+    # --- Validate config
     validate_config "$USER_CONFIG" || return 1
-    validate_cron "$BACKUP_SCHEDULE" || return 1
 
     # ===================================================
     # Load settings
@@ -154,6 +153,9 @@ load_config() {
     export MOUNT_POINT_BACKUP="/${MOUNT_PATH}/${LABEL_BACKUP}"
     export NEXTCLOUD_DATA_PATH="/${MOUNT_PATH}/${LABEL_DATA}/${DATA_DIR}"
     export DISC_SWITCH_SELECT="switch.${DISC_SWITCH}"
+
+    # --- Validate cron
+    validate_cron "$BACKUP_SCHEDULE" || return 1
 
     return 0
 }

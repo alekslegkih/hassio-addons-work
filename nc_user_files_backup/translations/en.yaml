@@ -1,4 +1,0 @@
-configuration:
-  ha_token:
-    name: "HA Access Token"
-    description: "Home Assistant Long-Lived Access Token"
