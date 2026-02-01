@@ -103,15 +103,11 @@ validate_config() {
 
 # load funktion
 load_config() {
-    local ADDON_SLUG="nc_user_files_backup"
-    local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"
-    
     log "Setting up configuration..."
     
+    local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"  
     local CONFIG_DIR="/config"
     local USER_CONFIG="${CONFIG_DIR}/settings.yaml"
-
-    local USER_CONFIG_DISPLAY="addon_configs/$(basename "$ADDON_SLUG")/settings.yaml"
     
     # Create default settings if not exists
     if [ ! -f "$USER_CONFIG" ]; then
@@ -124,7 +120,7 @@ load_config() {
         log "Creating default settings file..."
         if [ -f "$DEFAULT_CONFIG" ]; then
             cp "$DEFAULT_CONFIG" "$USER_CONFIG"
-            log "Settings file created: $USER_CONFIG_DISPLAY"
+            log "Settings file created: $USER_CONFIG"
             echo -e "${YELLOW}-----------------------------------------------------------${NC}"
             echo -e "${YELLOW} Configuration file has been created at: $USER_CONFIG${NC}"
             echo -e "${YELLOW} Please edit this file to configure your backup settings:${NC}"
@@ -139,7 +135,7 @@ load_config() {
             return 1
         fi
     else
-        log "Using existing settings: $USER_CONFIG_DISPLAY"
+        log "Using existing settings: $USER_CONFIG"
     fi
     
     # Validate configuration structure
@@ -148,18 +144,18 @@ load_config() {
     fi
 
     # Load HA token from addon options
-    if [ -r /data/options.json ]; then
-        export HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
-        log "Loaded HA token ${#HA_TOKEN}"
-        # Validate HA Token
-        if [ -z "$HA_TOKEN" ]; then
-            log_red "HA Token is empty"
-            return 1
-        fi
-    else
-        log_red "Cannot read /data/options.json"
-        return 1
-    fi
+    # if [ -r /data/options.json ]; then
+    #     HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
+    #     log "Loaded HA token ${#HA_TOKEN}"
+    #     # Validate HA Token
+    #     if [ -z "$HA_TOKEN" ]; then
+    #         log_red "HA Token is empty"
+    #         return 1
+    #     fi
+    # else
+    #     log_red "Cannot read /data/options.json"
+    #     return 1
+    # fi
 
     # Load settings from USER config
     export TIMEZONE=$(yq e '.general.timezone // "Europe/Moscow"' "$USER_CONFIG")
