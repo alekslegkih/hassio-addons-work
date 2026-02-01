@@ -58,14 +58,14 @@ esac
 # -----------------------------------------------------------
 HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
 
-if [ -z "$HA_TOKEN" ]; then
-    echo -e "${RED}-----------------------------------------------------------${NC}"
-    echo -e "${RED} Home Assistant token is not set${NC}"
-    echo -e "${RED} Please configure ha_token in addon options${NC}"
-    echo -e "${RED} Add-on stopped${NC}"
-    echo -e "${RED}-----------------------------------------------------------${NC}"
-    exit 1
-fi
+#if [ -z "$HA_TOKEN" ]; then
+#    echo -e "${RED}-----------------------------------------------------------${NC}"
+#    echo -e "${RED} Home Assistant token is not set${NC}"
+#    echo -e "${RED} Please configure ha_token in addon options${NC}"
+#    echo -e "${RED} Add-on stopped${NC}"
+#   echo -e "${RED}-----------------------------------------------------------${NC}"
+#   exit 1
+#fi
 
 # -----------------------------------------------------------
 # Load cron schedule from addon options
