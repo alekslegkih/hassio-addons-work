@@ -3,6 +3,7 @@
 *.log
 *.bak
 *.backup
+*.zip
 
 # Системные файлы
 .DS_Store

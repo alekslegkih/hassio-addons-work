@@ -1,44 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "==== CRON TRIGGER $(date) ====" >> /config/backup.log
-
-# -----------------------------------------------------------
-# Lock to prevent parallel runs
-# -----------------------------------------------------------
-LOCKFILE="/data/backup.lock"
-
-if [ -e "$LOCKFILE" ]; then
-    if [ "$(find "$LOCKFILE" -mmin +720)" ]; then
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Stale lock detected, removing"
-        rm -f "$LOCKFILE"
-    else
-        echo "$(date '+%Y-%m-%d %H:%M:%S') Backup already running. Exiting."
-        exit 0
-    fi
-fi
-
-touch "$LOCKFILE"
-
-cleanup() {
-    rm -f "$LOCKFILE"
-}
-trap cleanup EXIT
-
-# -----------------------------------------------------------
-# Load HA token (runtime only)
-# -----------------------------------------------------------
-HA_TOKEN=$(jq -r '.ha_token // empty' /data/options.json)
-
-if [ -z "$HA_TOKEN" ]; then
-    log_red "HA_TOKEN is empty or not set in addon options"
-    exit 1
-fi
-
-
 # Load logging functions and colors
 source /etc/nc_backup/logging.sh
-
 # Load configuration
 source /etc/nc_backup/config.sh
 
@@ -52,32 +16,6 @@ source /etc/nc_backup/config.sh
 
 # handle_final_result false "❌ Stop debug"
 # ===================================================
-
-# =============test===========================
-log "DEBUG: backup.sh started"
-log "DEBUG: HA_TOKEN length = ${#HA_TOKEN}"
-
-if [ -z "$HA_TOKEN" ]; then
-  log_red "DEBUG: HA_TOKEN is EMPTY at runtime"
-else
-  log "DEBUG: HA_TOKEN is PRESENT"
-fi
-
-
-RESP_FILE="/config/ha_api_debug.json"
-
-HTTP_CODE=$(curl -s \
-  -o "$RESP_FILE" \
-  -w "%{http_code}" \
-  -H "Authorization: Bearer $HA_TOKEN" \
-  http://homeassistant:8123/api/config)
-
-log "DEBUG: HA API HTTP code = $HTTP_CODE"
-log "DEBUG: HA API response:"
-cat "$RESP_FILE" >> "/config/backup.log"
-
-
-# ============================================
 
 # Set timezone
 export TZ="${TIMEZONE:-Europe/Moscow}"
