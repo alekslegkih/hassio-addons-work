@@ -134,7 +134,6 @@ load_config() {
     export NEXTCLOUD_DATA_PATH="/${MOUNT_PATH}/${LABEL_DATA}/${DATA_DIR}"
     export DISC_SWITCH_SELECT="switch.${DISC_SWITCH}"
 
-    log_green "Configuration loaded successfully"
     return 0
 }
 
@@ -146,14 +145,14 @@ RC=$?
 
 case "$RC" in
     0)
-        log_green "Add-on started successfully"
+        log_green "Configuration loaded successfully"
         ;;
     2)
         log_yellow "Waiting for user configuration"
         exit 0
         ;;
     *)
-        log_red "Add-on startup failed"
+        log_red "Configuration loaded failed"
         exit 1
         ;;
 esac

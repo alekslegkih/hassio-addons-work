@@ -14,6 +14,10 @@ source /etc/nc_backup/logging.sh
 
 log_section "CRON TRIGGER $(date)"
 
+TRIGGER="${1:-cron}"
+log "Backup trigger: $TRIGGER"
+
+
 # ===================================================
 # Lock (prevent parallel runs)
 # ===================================================

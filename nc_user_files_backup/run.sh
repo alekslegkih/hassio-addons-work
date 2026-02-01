@@ -49,19 +49,28 @@ case "$CONFIG_EXIT_CODE" in
 esac
 
 # -----------------------------------------------------------
-# Backup start vfnual options
+# Backup start manual options
 # -----------------------------------------------------------
 MANUAL_RUN=$(jq -r '.manual_run // false' /data/options.json)
 
 if [ "$MANUAL_RUN" = "true" ]; then
-    log_yellow "MANUAL RUN mode enabled"
-    log_yellow "Running backup once and exiting"
+    log_yellow "MANUAL RUN requested"
+    log "Starting one-time backup"
 
-    /backup.sh
+    /backup.sh manual
 
-    log_green "Manual run completed"
-    exit 0
+    log "Disabling manual_run flag"
+
+    curl -s -X POST \
+        -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
+        -H "Content-Type: application/json" \
+        http://supervisor/addons/self/options \
+        -d '{"manual_run": false}' \
+        > /dev/null
+
+    log_green "manual_run reset → continuing with cron mode"
 fi
+
 
 
 # -----------------------------------------------------------
@@ -96,7 +105,7 @@ log_blue "Installing cron job $CRON"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
-$CRON /backup.sh
+$CRON /backup.sh cron
 EOF
 
 chmod 600 "$CRON_FILE"
