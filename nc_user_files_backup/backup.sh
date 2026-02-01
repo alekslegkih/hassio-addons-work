@@ -74,7 +74,7 @@ HTTP_CODE=$(curl -s \
 
 log "DEBUG: HA API HTTP code = $HTTP_CODE"
 log "DEBUG: HA API response:"
-cat "$RESP_FILE" >> "$LOG_FILE"
+cat "$RESP_FILE" >> "/config/backup.log"
 
 
 # ============================================
