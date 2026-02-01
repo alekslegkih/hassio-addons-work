@@ -2,16 +2,6 @@
 set -euo pipefail
 
 # -----------------------------------------------------------
-# Service
-# -----------------------------------------------------------
-if [ "${SUPERVISOR_SERVICE:-}" = "run_backup" ]; then
-    log_green "Supervisor service run_backup received"
-    /backup.sh manual || log_red "Manual backup failed"
-    log_green "Manual backup finished"
-    exit 0
-fi
-
-# -----------------------------------------------------------
 # Load logging helpers
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh

@@ -1,6 +1,6 @@
 name: "Nextcloud User Files Backup"
 description: "Backup Nextcloud user files to external USB drive"
-version: "0.3.11"
+version: "0.3.12"
 slug: "nc_user_files_backup"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
@@ -21,8 +21,7 @@ map:
   - addon_config:rw
   - media:rw
   - share:rw
-services:
-  - run_backup:provide
+
 
 
 
