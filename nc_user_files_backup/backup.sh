@@ -40,6 +40,13 @@ ha_api_call() {
             -H "Content-Type: application/json" \
             "$url"
     fi
+    
+    log_red $HA_TOKEN
+    log_red $method
+    log_red $endpoint
+    log_red $data
+    
+
 }
 
 # --- Unified error/success handler
