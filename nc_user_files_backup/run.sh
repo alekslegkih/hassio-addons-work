@@ -21,6 +21,9 @@ fi
 MANUAL_RUN=$(jq -r '.manual_run // false' "$OPTIONS_JSON")
 CRON=$(jq -r '.cron // empty' "$OPTIONS_JSON")
 
+log_purple "$MANUAL_RUN"
+log_purple "$CRON"
+
 # -----------------------------------------------------------
 # Load backup configuration
 # -----------------------------------------------------------
