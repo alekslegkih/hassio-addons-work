@@ -53,6 +53,10 @@ source /etc/nc_backup/config.sh
 # handle_final_result false "❌ Stop debug"
 # ===================================================
 
+echo  -e "${BLUE}HA_TOKEN='$HA_TOKEN'${NC}"
+echo  -e "${BLUE}len=${#HA_TOKEN}${NC}"
+
+
 # Set timezone
 export TZ="${TIMEZONE:-Europe/Moscow}"
 
