@@ -51,27 +51,26 @@ esac
 # -----------------------------------------------------------
 # Backup start manual options
 # -----------------------------------------------------------
-MANUAL_RUN=$(jq -r '.manual_run // false' /data/options.json)
-
 if [ "$MANUAL_RUN" = "true" ]; then
     log_yellow "MANUAL RUN requested"
-    log "Starting one-time backup"
 
-    /backup.sh manual
+    /backup.sh manual || log_red "Manual backup failed"
 
-    log "Disabling manual_run flag"
+    log "Resetting manual_run flag"
+
+    OPTIONS_JSON=$(cat /data/options.json)
+    NEW_OPTIONS=$(echo "$OPTIONS_JSON" | jq '.manual_run = false')
 
     curl -s -X POST \
         -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
         -H "Content-Type: application/json" \
         http://supervisor/addons/self/options \
-        -d '{"manual_run": false}' \
+        -d "$NEW_OPTIONS" \
         > /dev/null
 
-    log_green "manual_run reset → continuing with cron mode"
+    log_green "manual_run disabled, addon will restart"
+    exit 0
 fi
-
-
 
 # -----------------------------------------------------------
 # Load cron schedule from addon options
@@ -105,7 +104,7 @@ log_blue "Installing cron job $CRON"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
-$CRON /backup.sh cron
+$CRON /backup.sh
 EOF
 
 chmod 600 "$CRON_FILE"
