@@ -23,7 +23,7 @@ touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
 # -----------------------------------------------------------
-# Load logging + config
+# Load logging + config лог удалим
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
 source /etc/nc_backup/config.sh
