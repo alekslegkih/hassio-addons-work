@@ -54,7 +54,7 @@ esac
 # -----------------------------------------------------------
 CRON_FILE="/etc/crontabs/root"
 
-log_blue "Installing cron job $CRON"
+log_blue "Installing cron job"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
