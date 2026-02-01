@@ -7,6 +7,24 @@ set -euo pipefail
 source /etc/nc_backup/logging.sh
 
 # ===================================================
+# Validate cron format
+# ===================================================
+validate_cron() {
+    local CRON="$1"
+    local FIELDS
+    FIELDS=$(echo "$CRON" | awk '{print NF}')
+
+    if [ "$FIELDS" -ne 5 ]; then
+        log_red "Invalid cron format: '$CRON'"
+        log_yellow "Expected: minute hour day month weekday"
+        log_yellow "Example: 0 3 * * *"
+        return 1
+    fi
+
+    return 0
+}
+
+# ===================================================
 # Validate configuration structure
 # ===================================================
 validate_config() {
@@ -14,6 +32,7 @@ validate_config() {
 
     local required_fields=(
         "general.timezone"
+        "general.schedule"
         "general.rsync_options"
         "general.test_mode"
         "storage.mount_path"
@@ -108,11 +127,13 @@ load_config() {
 
     # --- Validate
     validate_config "$USER_CONFIG" || return 1
+    validate_cron "$BACKUP_SCHEDULE" || return 1
 
     # ===================================================
     # Load settings
     # ===================================================
     export TIMEZONE=$(yq e '.general.timezone' "$USER_CONFIG")
+    export BACKUP_SCHEDULE=$(yq e '.general.schedule // ""' "$USER_CONFIG")
     export RSYNC_OPTIONS=$(yq e '.general.rsync_options' "$USER_CONFIG")
     export TEST_MODE=$(yq e '.general.test_mode' "$USER_CONFIG")
 
@@ -136,6 +157,7 @@ load_config() {
 
     return 0
 }
+
 
 # ===================================================
 # Execute

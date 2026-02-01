@@ -13,7 +13,8 @@
 # =============================================================================
 
 general:
-  timezone: "Europe/Moscow"
+  timezone: Europe/Moscow
+  schedule: "0 3 * * *"
   rsync_options: "-aHAX --delete"
   test_mode: false
 

@@ -5,6 +5,7 @@ set -euo pipefail
 # Load logging helpers
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
+source /etc/nc_backup/config.sh
 
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
@@ -49,28 +50,6 @@ case "$CONFIG_EXIT_CODE" in
 esac
 
 # -----------------------------------------------------------
-# Load cron schedule from addon options
-# -----------------------------------------------------------
-CRON=$(jq -r '.cron // empty' "/data/options.json")
-if [ -z "$CRON" ]; then
-    log_red "Cron schedule is not set in addon options"
-    exit 1
-fi
-
-# -----------------------------------------------------------
-# Validate cron format (busybox requires 5 fields)
-# -----------------------------------------------------------
-CRON_FIELDS=$(echo "$CRON" | awk '{print NF}')
-if [ "$CRON_FIELDS" -ne 5 ]; then
-    log_red "Invalid cron format: '$CRON'"
-    log_yellow "Expected format: minute hour day month weekday"
-    log_yellow "Example: 0 3 * * *"
-    exit 1
-fi
-
-log_green "Cron format validation passed"
-
-# -----------------------------------------------------------
 # Install cron job
 # -----------------------------------------------------------
 CRON_FILE="/etc/crontabs/root"
@@ -79,7 +58,7 @@ log_blue "Installing cron job $CRON"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
-$CRON /backup.sh
+$BACKUP_SCHEDULE /backup.sh
 EOF
 
 chmod 600 "$CRON_FILE"
