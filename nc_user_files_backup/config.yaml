@@ -1,6 +1,6 @@
 name: "Nextcloud User Files Backup"
 description: "Backup Nextcloud user files to external USB drive"
-version: "0.3.8"
+version: "0.3.9"
 slug: "nc_user_files_backup"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
@@ -15,12 +15,14 @@ hassio_role: admin
 homeassistant_api: true
 options:
   cron: "0 3 * * *"
-  manual_run: false
 schema:
   cron: str
-  manual_run: bool
 map:
   - addon_config:rw
   - media:rw
   - share:rw
-usb: true
+services:
+  run_backup:
+    name: Run backup now
+    description: Run Nextcloud user files backup immediately
+

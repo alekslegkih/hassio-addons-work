@@ -9,22 +9,6 @@ source /etc/nc_backup/logging.sh
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
 # -----------------------------------------------------------
-# Load addon configuration
-# -----------------------------------------------------------
-OPTIONS_JSON="/data/options.json"
-
-if [ ! -r "$OPTIONS_JSON" ]; then
-    log_red "Cannot read addon options"
-    exit 1
-fi
-
-MANUAL_RUN=$(jq -r '.manual_run // false' "$OPTIONS_JSON")
-CRON=$(jq -r '.cron // empty' "$OPTIONS_JSON")
-
-log_purple "$MANUAL_RUN"
-log_purple "$CRON"
-
-# -----------------------------------------------------------
 # Load backup configuration
 # -----------------------------------------------------------
 CONFIG_FILE="/etc/nc_backup/config.sh"
@@ -65,31 +49,9 @@ case "$CONFIG_EXIT_CODE" in
 esac
 
 # -----------------------------------------------------------
-# Backup start manual options
-# -----------------------------------------------------------
-if [ "$MANUAL_RUN" = "true" ]; then
-    log_yellow "MANUAL RUN requested"
-
-    /backup.sh manual || log_red "Manual backup failed"
-
-    log "Resetting manual_run flag"
-
-    OPTIONS_JSON=$(cat /data/options.json)
-    NEW_OPTIONS=$(echo "$OPTIONS_JSON" | jq '.manual_run = false')
-
-    curl -s -X POST \
-        -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
-        -H "Content-Type: application/json" \
-        http://supervisor/addons/self/options \
-        -d "$NEW_OPTIONS" \
-        > /dev/null
-
-    log_green "manual_run disabled, addon will restart"
-fi
-
-# -----------------------------------------------------------
 # Load cron schedule from addon options
 # -----------------------------------------------------------
+CRON=$(jq -r '.cron // empty' "/data/options.json")
 if [ -z "$CRON" ]; then
     log_red "Cron schedule is not set in addon options"
     exit 1
@@ -128,4 +90,20 @@ log_green "Cron job installed successfully"
 # Start cron daemon
 # -----------------------------------------------------------
 log_green "Starting cron daemon"
-exec crond -f -l 8
+exec crond -f -l 8 &
+
+# -----------------------------------------------------------
+# Services 
+# ----------------------------------------------------------
+SERVICE_FIFO="/var/run/s6/services/supervisor-addon-api"
+
+log_green "Waiting for HA service calls..."
+
+while read -r line; do
+    if echo "$line" | grep -q '"service":"run_backup"'; then
+        log_green "HA service run_backup received"
+        /backup.sh manual || log_red "Manual backup failed"
+        log_green "Manual backup finished"
+    fi
+done < "$SERVICE_FIFO"
+
