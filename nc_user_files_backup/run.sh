@@ -1,13 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+
 # -----------------------------------------------------------
 # Load logging helpers
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
-source /etc/nc_backup/config.sh
-
 log_section  " Starting Nextcloud User Files Backup Add-on"
+
+source /etc/nc_backup/config.sh
 
 # -----------------------------------------------------------
 # Load backup configuration
@@ -54,7 +55,7 @@ esac
 # -----------------------------------------------------------
 CRON_FILE="/etc/crontabs/root"
 
-log_blue "Installing cron job"
+log_blue "Installing cron job $BACKUP_SCHEDULE"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
