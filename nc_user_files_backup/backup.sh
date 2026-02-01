@@ -53,9 +53,31 @@ source /etc/nc_backup/config.sh
 # handle_final_result false "❌ Stop debug"
 # ===================================================
 
-echo  -e "${BLUE}HA_TOKEN='$HA_TOKEN'${NC}"
-echo  -e "${BLUE}len=${#HA_TOKEN}${NC}"
+# =============test===========================
+log "DEBUG: backup.sh started"
+log "DEBUG: HA_TOKEN length = ${#HA_TOKEN}"
 
+if [ -z "$HA_TOKEN" ]; then
+  log_red "DEBUG: HA_TOKEN is EMPTY at runtime"
+else
+  log "DEBUG: HA_TOKEN is PRESENT"
+fi
+
+
+RESP_FILE="/config/ha_api_debug.json"
+
+HTTP_CODE=$(curl -s \
+  -o "$RESP_FILE" \
+  -w "%{http_code}" \
+  -H "Authorization: Bearer $HA_TOKEN" \
+  http://homeassistant:8123/api/config)
+
+log "DEBUG: HA API HTTP code = $HTTP_CODE"
+log "DEBUG: HA API response:"
+cat "$RESP_FILE" >> "$LOG_FILE"
+
+
+# ============================================
 
 # Set timezone
 export TZ="${TIMEZONE:-Europe/Moscow}"
