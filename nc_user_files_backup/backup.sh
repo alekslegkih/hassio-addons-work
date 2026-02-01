@@ -142,10 +142,16 @@ fi
 # ===================================================
 # Users
 # ===================================================
-USERS=$(find "$NEXTCLOUD_DATA_PATH" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
-[ -z "$USERS" ] && handle_final_result false "No users found"
+log "Searching Nextcloud users..."
 
-log_yellow "Users: $(echo "$USERS" | paste -sd ', ')"
+USERS=$(find "$NEXTCLOUD_DATA_PATH" -maxdepth 2 -mindepth 2 \
+    -type d -name files \
+    -exec dirname {} \; \
+    -exec basename {} \; | sort)
+
+[ -z "$USERS" ] && handle_final_result false "No users with files directory found"
+
+log_yellow "Users found: $(echo "$USERS" | paste -sd ', ' -)"
 
 # ===================================================
 # Backup loop
