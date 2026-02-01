@@ -124,6 +124,7 @@ except:
 if [ "$API_RESPONSE" = "API OK" ]; then
     log "Home Assistant API connection successful"
 else
+    log_red "$API_RESPONSE"
     handle_final_result false "Home Assistant API connection failed"
 fi
 
