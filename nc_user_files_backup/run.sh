@@ -2,6 +2,16 @@
 set -euo pipefail
 
 # -----------------------------------------------------------
+# Service
+# -----------------------------------------------------------
+if [ "${SUPERVISOR_SERVICE:-}" = "run_backup" ]; then
+    log_green "Supervisor service run_backup received"
+    /backup.sh manual || log_red "Manual backup failed"
+    log_green "Manual backup finished"
+    exit 0
+fi
+
+# -----------------------------------------------------------
 # Load logging helpers
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
@@ -90,20 +100,4 @@ log_green "Cron job installed successfully"
 # Start cron daemon
 # -----------------------------------------------------------
 log_green "Starting cron daemon"
-exec crond -f -l 8 &
-
-# -----------------------------------------------------------
-# Services 
-# ----------------------------------------------------------
-SERVICE_FIFO="/var/run/s6/services/supervisor-addon-api"
-
-log_green "Waiting for HA service calls..."
-
-while read -r line; do
-    if echo "$line" | grep -q '"service":"run_backup"'; then
-        log_green "HA service run_backup received"
-        /backup.sh manual || log_red "Manual backup failed"
-        log_green "Manual backup finished"
-    fi
-done < "$SERVICE_FIFO"
-
+exec crond -f -l 8
