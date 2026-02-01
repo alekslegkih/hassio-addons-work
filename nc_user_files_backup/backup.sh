@@ -144,14 +144,23 @@ fi
 # ===================================================
 log "Searching Nextcloud users..."
 
-USERS=$(find "$NEXTCLOUD_DATA_PATH" -maxdepth 2 -mindepth 2 \
-    -type d -name files \
-    -exec dirname {} \; \
-    -exec basename {} \; | sort)
+USERS=$(
+    find "$NEXTCLOUD_DATA_PATH" \
+        -mindepth 1 -maxdepth 1 \
+        -type d \
+        -exec bash -c '
+            for d; do
+                [ -d "$d/files" ] && basename "$d"
+            done
+        ' bash {} +
+)
 
-[ -z "$USERS" ] && handle_final_result false "No users with files directory found"
+if [ -z "$USERS" ]; then
+    handle_final_result false "No Nextcloud users with files directory found"
+fi
 
-log_yellow "Users found: $(echo "$USERS" | paste -sd ', ' -)"
+log_yellow "Users found: $(echo "$USERS" | paste -sd ', ')"
+
 
 # ===================================================
 # Backup loop
