@@ -6,8 +6,6 @@ set -euo pipefail
 # ===================================================
 source /etc/nc_backup/logging.sh
 
-log_section "Starting Nextcloud User Files Backup Add-on"
-
 # ===================================================
 # Validate configuration structure
 # ===================================================
@@ -159,15 +157,3 @@ case "$RC" in
         exit 1
         ;;
 esac
-
-# ===================================================
-# Setup cron
-# ===================================================
-CRON=$(jq -r '.cron' /data/options.json)
-CRON_FILE="/etc/crontabs/root"
-
-log "Installing cron schedule: $CRON"
-echo "$CRON /backup.sh >> /config/backup.log 2>&1" > "$CRON_FILE"
-
-log_green "Starting cron daemon"
-exec crond -f -l 8

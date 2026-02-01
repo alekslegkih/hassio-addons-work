@@ -6,9 +6,7 @@ set -euo pipefail
 # -----------------------------------------------------------
 source /etc/nc_backup/logging.sh
 
-log_blue "-----------------------------------------------------------"
 log_section  " Starting Nextcloud User Files Backup Add-on"
-log_blue "-----------------------------------------------------------"
 
 # -----------------------------------------------------------
 # Load backup configuration
@@ -88,9 +86,6 @@ $CRON /backup.sh
 EOF
 
 chmod 600 "$CRON_FILE"
-
-log_green "Starting cron daemon..."
-exec crond -f -l 8
 
 log_green "Cron job installed successfully"
 
