@@ -49,6 +49,22 @@ case "$CONFIG_EXIT_CODE" in
 esac
 
 # -----------------------------------------------------------
+# Backup start vfnual options
+# -----------------------------------------------------------
+MANUAL_RUN=$(jq -r '.manual_run // false' /data/options.json)
+
+if [ "$MANUAL_RUN" = "true" ]; then
+    log_yellow "MANUAL RUN mode enabled"
+    log_yellow "Running backup once and exiting"
+
+    /backup.sh
+
+    log_green "Manual run completed"
+    exit 0
+fi
+
+
+# -----------------------------------------------------------
 # Load cron schedule from addon options
 # -----------------------------------------------------------
 CRON=$(jq -r '.cron // empty' /data/options.json)
@@ -57,8 +73,6 @@ if [ -z "$CRON" ]; then
     log_red "Cron schedule is not set in addon options"
     exit 1
 fi
-
-log "Cron schedule from options: '$CRON'"
 
 # -----------------------------------------------------------
 # Validate cron format (busybox requires 5 fields)
@@ -78,7 +92,7 @@ log_green "Cron format validation passed"
 # -----------------------------------------------------------
 CRON_FILE="/etc/crontabs/root"
 
-log_blue "Installing cron job"
+log_blue "Installing cron job $CRON"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
@@ -92,5 +106,5 @@ log_green "Cron job installed successfully"
 # -----------------------------------------------------------
 # Start cron daemon
 # -----------------------------------------------------------
-log_green "Starting cron daemon (foreground mode)"
+log_green "Starting cron daemon"
 exec crond -f -l 8
