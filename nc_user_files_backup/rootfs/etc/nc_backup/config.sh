@@ -144,18 +144,18 @@ load_config() {
     fi
 
     # Load HA token from addon options
-    if [ -r /data/options.json ]; then
-        export HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
-        log "Loaded HA token ${#HA_TOKEN}"
-        # Validate HA Token
-        if [ -z "$HA_TOKEN" ]; then
-            log_red "HA Token is empty"
-            return 1
-        fi
-    else
-        log_red "Cannot read /data/options.json"
-        return 1
-    fi
+    # if [ -r /data/options.json ]; then
+    #     HA_TOKEN=$(jq -r '.ha_token // ""' /data/options.json)
+    #     log "Loaded HA token ${#HA_TOKEN}"
+    #     # Validate HA Token
+    #     if [ -z "$HA_TOKEN" ]; then
+    #         log_red "HA Token is empty"
+    #         return 1
+    #     fi
+    # else
+    #     log_red "Cannot read /data/options.json"
+    #     return 1
+    # fi
 
     # Load settings from USER config
     export TIMEZONE=$(yq e '.general.timezone // "Europe/Moscow"' "$USER_CONFIG")

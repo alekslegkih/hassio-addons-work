@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+echo "==== CRON TRIGGER $(date) ====" >> /config/backup.log
+
 # -----------------------------------------------------------
 # Lock to prevent parallel runs
 # -----------------------------------------------------------
@@ -22,6 +24,17 @@ cleanup() {
     rm -f "$LOCKFILE"
 }
 trap cleanup EXIT
+
+# -----------------------------------------------------------
+# Load HA token (runtime only)
+# -----------------------------------------------------------
+HA_TOKEN=$(jq -r '.ha_token // empty' /data/options.json)
+
+if [ -z "$HA_TOKEN" ]; then
+    log_red "HA_TOKEN is empty or not set in addon options"
+    exit 1
+fi
+
 
 # Load logging functions and colors
 source /etc/nc_backup/logging.sh
