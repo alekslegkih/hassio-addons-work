@@ -21,14 +21,13 @@ fi
 MANUAL_RUN=$(jq -r '.manual_run // false' "$OPTIONS_JSON")
 CRON=$(jq -r '.cron // empty' "$OPTIONS_JSON")
 
-
 # -----------------------------------------------------------
 # Load backup configuration
 # -----------------------------------------------------------
 CONFIG_FILE="/etc/nc_backup/config.sh"
 
 if [ -f "$CONFIG_FILE" ]; then
-    log "Loading configuration: $CONFIG_FILE"
+   # log "Loading configuration: $CONFIG_FILE"
     source "$CONFIG_FILE"
 else
     log_red "Config file not found: $CONFIG_FILE"
@@ -83,7 +82,6 @@ if [ "$MANUAL_RUN" = "true" ]; then
         > /dev/null
 
     log_green "manual_run disabled, addon will restart"
-    exit 0
 fi
 
 # -----------------------------------------------------------

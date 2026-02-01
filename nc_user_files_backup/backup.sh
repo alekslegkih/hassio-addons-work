@@ -12,8 +12,6 @@ LOCKFILE="/data/backup.lock"
 # ===================================================
 source /etc/nc_backup/logging.sh
 
-log_section "CRON TRIGGER $(date)"
-
 # ===================================================
 # Lock (prevent parallel runs)
 # ===================================================
@@ -147,7 +145,7 @@ fi
 USERS=$(find "$NEXTCLOUD_DATA_PATH" -maxdepth 1 -mindepth 1 -type d -exec basename {} \; | sort)
 [ -z "$USERS" ] && handle_final_result false "No users found"
 
-log "Users: $(echo "$USERS" | paste -sd ', ')"
+log_yellow "Users: $(echo "$USERS" | paste -sd ', ')"
 
 # ===================================================
 # Backup loop
