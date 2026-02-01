@@ -41,10 +41,10 @@ ha_api_call() {
             "$url"
     fi
     
-    log_red $HA_TOKEN
-    log_red $method
-    log_red $endpoint
-    log_red $data
+    log_red Токен"$HA_TOKEN"
+    log_red Метод "$method"
+    log_red Ендпоинт "$endpoint"
+    log_red Дата "$data"
     
 
 }
