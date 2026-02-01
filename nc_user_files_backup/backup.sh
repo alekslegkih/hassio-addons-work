@@ -171,7 +171,7 @@ for user in $USERS; do
     SRC="$NEXTCLOUD_DATA_PATH/$user/files/"
     DST="$MOUNT_POINT_BACKUP/$user/"
 
-    [ ! -d "$SRC" ] && log_yellow "User $user has no files, skipping" && continue
+   #  [ ! -d "$SRC" ] && log_yellow "User $user has no files, skipping" && continue
 
     mkdir -p "$DST"
     log_blue "Backing up user: $user"
@@ -183,6 +183,8 @@ for user in $USERS; do
         if rsync $RSYNC_OPTIONS "$SRC" "$DST/"; then
             FILES=$(find "$DST" -type f | wc -l)
             log_green "User $user done ($FILES files)"
+            SIZE=$(du -sh "$SRC" 2>/dev/null | awk '{print $1}')
+            log "User $user data size: $SIZE"
         else
             log_red "User $user backup failed"
             SUCCESS=false
