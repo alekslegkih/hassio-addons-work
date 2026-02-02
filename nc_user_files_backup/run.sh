@@ -41,7 +41,7 @@ CONFIG_EXIT_CODE=$?
 
 case "$CONFIG_EXIT_CODE" in
     0)
-        log_green "Backup configuration OK"
+        log_green "Configuration load... OK"
         ;;
     2)
         log_yellow "-----------------------------------------------------------"
@@ -75,8 +75,8 @@ fi
 # the schedule defined in settings.yaml
 CRON_FILE="/etc/crontabs/root"
 
-log_blue "Installing cron job $BACKUP_SCHEDULE"
 log "Cron file: $CRON_FILE"
+log_blue "Installing cron job $BACKUP_SCHEDULE"
 
 cat > "$CRON_FILE" <<EOF
 $BACKUP_SCHEDULE /backup.sh
