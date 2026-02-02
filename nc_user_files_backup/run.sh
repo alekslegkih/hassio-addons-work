@@ -15,7 +15,7 @@ log_section  " Starting Nextcloud User Files Backup Add-on"
 # This file is generated from settings.yaml and contains
 # shell variables used by the add-on runtime
 source /etc/nc_backup/config.sh || {
-    log_red "Cannot load config.sh"
+    log_red "Failed to load configuration library (config.sh)"
     exit 1
 }
 
@@ -32,6 +32,9 @@ source /etc/nc_backup/config.sh || {
 #   0 - configuration is valid
 #   2 - first run detected (settings.yaml created)
 #   1 - configuration error
+
+log "Loading and validating backup configuration"
+
 load_config
 CONFIG_EXIT_CODE=$?
 
@@ -63,7 +66,8 @@ esac
 # the schedule defined in settings.yaml
 CRON_FILE="/etc/crontabs/root"
 
-log_blue "Installing cron job $BACKUP_SCHEDULE"
+log "Installing cron job"
+log "Schedule: $BACKUP_SCHEDULE"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
@@ -78,5 +82,7 @@ log_green "Cron job installed successfully"
 # Start cron daemon
 # -----------------------------------------------------------
 # Run cron in foreground so the container remains alive
+log_section "Runtime"
 log_green "Starting cron daemon"
+
 exec crond -f -l 8

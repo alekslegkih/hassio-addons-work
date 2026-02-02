@@ -48,6 +48,7 @@ validate_cron() {
 #
 # Does NOT validate filesystem paths or external resources.
 validate_config() {
+    log "Validating configuration file structure and values"
     local USER_CONFIG="$1"
 
     local required_fields=(
@@ -129,7 +130,7 @@ validate_config() {
 #   1 - configuration error
 #   2 - first run, default config created
 load_config() {
-    log "Setting up configuration…"
+    log "Loading backup configuration"
 
     local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"
     local USER_CONFIG="/config/settings.yaml"
@@ -149,12 +150,12 @@ load_config() {
         return 2
     fi
 
-    log "Using existing settings: settings.yaml"
+    log "Using existing configuration: $USER_CONFIG"
 
     # --- Validate config
     validate_config "$USER_CONFIG" || return 1
 
-    # ===================================================
+    # ==================================================
     # Load validated settings into environment
     # ===================================================
     export TIMEZONE=$(yq e '.general.timezone' "$USER_CONFIG")
@@ -185,24 +186,3 @@ load_config() {
 
     return 0
 }
-
-
-# ===================================================
-# Execute configuration loading
-# ===================================================
-# load_config
-# RC=$?
-
-# case "$RC" in
-#     0)
-#         log_green "Configuration loaded successfully"
-#         ;;
-#     2)
-#         log_yellow "Waiting for user configuration"
-#         exit 0
-#         ;;
-#     *)
-#         log_red "Configuration loaded failed"
-#         exit 1
-#         ;;
-# esac
