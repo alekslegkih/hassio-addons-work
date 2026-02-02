@@ -18,7 +18,7 @@ source /etc/nc_backup/logging.sh
 # Load validated configuration
 # ===================================================
 # This provides all exported variables from settings.yaml
-# source /etc/nc_backup/config.sh
+source /etc/nc_backup/config.sh
 
 #log Load configuration
 #if [[ "${CONFIG_LOADED:-false}" != "true" ]]; then
