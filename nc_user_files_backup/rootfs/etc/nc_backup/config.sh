@@ -149,7 +149,7 @@ load_config() {
         return 2
     fi
 
-    log "Using existing settings: $USER_CONFIG"
+    log "Using existing settings: settings.yaml"
 
     # --- Validate config
     validate_config "$USER_CONFIG" || return 1

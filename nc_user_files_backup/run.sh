@@ -14,15 +14,11 @@ log_section  " Starting Nextcloud User Files Backup Add-on"
 # -----------------------------------------------------------
 # This file is generated from settings.yaml and contains
 # shell variables used by the add-on runtime
-CONFIG_FILE="/etc/nc_backup/config.sh"
-
-if [ -f "$CONFIG_FILE" ]; then
-   # log "Loading configuration: $CONFIG_FILE"
-    source "$CONFIG_FILE"
-else
-    log_red "Config file not found: $CONFIG_FILE"
+source /etc/nc_backup/config.sh || {
+    log_red "Cannot load config.sh"
     exit 1
-fi
+}
+
 
 # -----------------------------------------------------------
 # Validate configuration
@@ -41,20 +37,20 @@ CONFIG_EXIT_CODE=$?
 
 case "$CONFIG_EXIT_CODE" in
     0)
-        log_green "Backup configuration OK"
+        log_green "Backup configuration loaded and validated successfully"
         ;;
     2)
         log_yellow "-----------------------------------------------------------"
         log_yellow " First run detected"
-        log_yellow " settings.yaml has been created"
-        log_yellow " Please edit it and restart the addon"
+        log_yellow " Default settings.yaml has been created"
+        log_yellow " Please edit the file and restart the add-on"
         log_yellow "-----------------------------------------------------------"
         exit 0
         ;;
     *)
         log_red "-----------------------------------------------------------"
-        log_red " Configuration error detected"
-        log_red " Add-on stopped. See logs above for details"
+        log_red " Configuration validation failed"
+        log_red " Add-on startup has been aborted. See logs above for details"
         log_red "-----------------------------------------------------------"
         exit 1
         ;;
