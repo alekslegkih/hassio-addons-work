@@ -66,4 +66,4 @@ notifications:
   success_message: "Nextcloud user files backup completed successfully!"
 
   # Message sent if the backup finishes with errors
-  error_message: "Nextcloud backup completed with errors!"
+  error_message: "Nextcloud user files backup completed with errors!"
