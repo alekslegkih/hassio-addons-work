@@ -2,13 +2,27 @@
 set -euo pipefail
 
 # ===================================================
-# Load logging
+# Configuration loader and validator
+#
+# Responsibilities:
+# - Create default configuration on first run
+# - Validate user-provided settings.yaml
+# - Export validated settings as environment variables
+# ===================================================
+
+# ===================================================
+# Load logging helpers
 # ===================================================
 source /etc/nc_backup/logging.sh
 
 # ===================================================
 # Validate cron format
 # ===================================================
+# Performs a basic structural validation of cron expression.
+# Expects exactly 5 fields:
+#   minute hour day month weekday
+#
+# This does NOT validate cron semantics, only field count
 validate_cron() {
     local CRON="$1"
     local FIELDS
@@ -25,8 +39,14 @@ validate_cron() {
 }
 
 # ===================================================
-# Validate configuration structure
+# Validate configuration structure and values
 # ===================================================
+# Checks:
+# - Required sections existence
+# - Required fields presence and non-empty values
+# - Boolean fields validity (true / false)
+#
+# Does NOT validate filesystem paths or external resources.
 validate_config() {
     local USER_CONFIG="$1"
 
@@ -47,6 +67,7 @@ validate_config() {
         "notifications.error_message"
     )
 
+    # Expected top-level sections
     local expected_sections=("general" "storage" "power" "notifications")
     local actual_sections
     actual_sections=$(yq e 'keys | .[]' "$USER_CONFIG" 2>/dev/null | tr '\n' ' ')
@@ -54,7 +75,7 @@ validate_config() {
     local has_errors=false
     local current_section=""
 
-    # --- Check sections
+    # --- Validate sections
     for section in "${expected_sections[@]}"; do
         if [[ ! " $actual_sections " =~ " $section " ]]; then
             log_red "[MISSING SECTION] $section"
@@ -63,7 +84,7 @@ validate_config() {
         fi
     done
 
-    # --- Check fields
+    # --- Validate fields
     for field in "${required_fields[@]}"; do
         local value
         value=$(yq e ".$field" "$USER_CONFIG" 2>/dev/null)
@@ -81,6 +102,7 @@ validate_config() {
                 has_errors=true
             fi
 
+            # Explicit boolean validation
             if [[ "$key" =~ ^(test_mode|enable_power|enable_notifications)$ ]] &&
                [[ "$value" != "true" && "$value" != "false" ]]; then
                 log_red "Invalid boolean: $section.$key = $value"
@@ -102,6 +124,10 @@ validate_config() {
 # ===================================================
 # Load configuration
 # ===================================================
+# Return codes:
+#   0 - configuration loaded successfully
+#   1 - configuration error
+#   2 - first run, default config created
 load_config() {
     log "Setting up configuration…"
 
@@ -129,7 +155,7 @@ load_config() {
     validate_config "$USER_CONFIG" || return 1
 
     # ===================================================
-    # Load settings
+    # Load validated settings into environment
     # ===================================================
     export TIMEZONE=$(yq e '.general.timezone' "$USER_CONFIG")
     export BACKUP_SCHEDULE=$(yq e '.general.schedule // ""' "$USER_CONFIG")
@@ -154,7 +180,7 @@ load_config() {
     export NEXTCLOUD_DATA_PATH="/${MOUNT_PATH}/${LABEL_DATA}/${DATA_DIR}"
     export DISC_SWITCH_SELECT="switch.${DISC_SWITCH}"
 
-    # --- Validate cron
+    # --- Final cron validation
     validate_cron "$BACKUP_SCHEDULE" || return 1
 
     return 0
@@ -162,7 +188,7 @@ load_config() {
 
 
 # ===================================================
-# Execute
+# Execute configuration loading
 # ===================================================
 load_config
 RC=$?
