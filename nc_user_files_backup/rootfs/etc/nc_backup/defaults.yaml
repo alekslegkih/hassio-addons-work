@@ -21,8 +21,8 @@ general:
   timezone: Europe/Moscow
 
   # Backup schedule in cron format
-  # Example: "12 3 * * *" — every day at 03:12
-  schedule: "12 3 * * *"
+  # Example: "0 3 * * *" — every day at 03:00
+  schedule: "0 3 * * *"
 
   # rsync command-line options
   # Do not change unless you fully understand their purpose
