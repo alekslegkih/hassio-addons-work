@@ -136,6 +136,7 @@ validate_config() {
 #   2 - first run, default config created
 load_config() {
     log "Setting up configuration…"
+    unset CONFIG_LOADED
 
     local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"
     local USER_CONFIG="/config/settings.yaml"
@@ -189,26 +190,7 @@ load_config() {
     # --- Final cron validation
     validate_cron "$BACKUP_SCHEDULE" || return 1
 
+    export CONFIG_LOADED=true
     return 0
 }
 
-
-# ===================================================
-# Execute configuration loading
-# ===================================================
-load_config
-RC=$?
-
-case "$RC" in
-    0)
-        log_green "Configuration loaded successfully"
-        ;;
-    2)
-        log_yellow "Waiting for user configuration"
-        exit 0
-        ;;
-    *)
-        log_red "Configuration loaded failed"
-        exit 1
-        ;;
-esac
