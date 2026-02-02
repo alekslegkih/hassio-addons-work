@@ -9,6 +9,8 @@ set -euo pipefail
 source /etc/nc_backup/logging.sh
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
+source /etc/nc_backup/config.sh
+
 # -----------------------------------------------------------
 # Load backup configuration file
 # -----------------------------------------------------------
@@ -59,14 +61,6 @@ case "$CONFIG_EXIT_CODE" in
         exit 1
         ;;
 esac
-
-# -----------------------------------------------------------
-# Config load
-# -----------------------------------------------------------
-if [[ "${CONFIG_LOADED:-false}" != "true" ]]; then
-    log_red "Configuration not loaded"
-    exit 1
-fi
 
 # -----------------------------------------------------------
 # Install cron job

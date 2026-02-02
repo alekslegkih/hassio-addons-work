@@ -15,16 +15,6 @@ LOCKFILE="/data/backup.lock"
 source /etc/nc_backup/logging.sh
 
 # ===================================================
-# Load validated configuration
-# ===================================================
-# This provides all exported variables from settings.yaml
-# source /etc/nc_backup/config.sh
-if [[ "${CONFIG_LOADED:-false}" != "true" ]]; then
-    log_red "Configuration not loaded (backup.sh)"
-    exit 1
-fi
-
-# ===================================================
 # Lock handling (prevent parallel executions)
 # ===================================================
 # If a lock exists:
@@ -43,6 +33,12 @@ fi
 # Create lock and ensure cleanup on exit
 touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
+
+# ===================================================
+# Load validated configuration and environment
+# ===================================================
+# This provides all exported variables from settings.yaml
+source /etc/nc_backup/config.sh
 
 # ===================================================
 # Header / environment info
