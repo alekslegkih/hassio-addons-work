@@ -2,24 +2,19 @@
 set -euo pipefail
 
 # ===================================================
-# Runtime paths
+# Paths
 # ===================================================
-# LOG_FILE  - persistent backup log (available from HA UI)
-# LOCKFILE  - prevents parallel or overlapping backup runs
 LOG_FILE="/config/backup.log"
 LOCKFILE="/data/backup.lock"
 
 # ===================================================
-# Load logging helpers
+# Load logging
 # ===================================================
 source /etc/nc_backup/logging.sh
 
 # ===================================================
-# Lock handling (prevent parallel executions)
+# Lock (prevent parallel runs)
 # ===================================================
-# If a lock exists:
-# - remove it if older than 12 hours (stale run)
-# - otherwise exit silently
 if [ -e "$LOCKFILE" ]; then
     if [ "$(find "$LOCKFILE" -mmin +720 2>/dev/null)" ]; then
         log_yellow "Stale lock detected, removing"
@@ -30,18 +25,16 @@ if [ -e "$LOCKFILE" ]; then
     fi
 fi
 
-# Create lock and ensure cleanup on exit
 touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
 # ===================================================
-# Load validated configuration and environment
+# Load configuration
 # ===================================================
-# This provides all exported variables from settings.yaml
 source /etc/nc_backup/config.sh
 
 # ===================================================
-# Header / environment info
+# Header
 # ===================================================
 log_section "Nextcloud User Files Backup"
 
@@ -56,12 +49,8 @@ log "Notifications: $ENABLE_NOTIFICATIONS"
 log "Service: $NOTIFICATION_SERVICE"
 
 # ===================================================
-# Home Assistant Supervisor API helper
+# HA API helper (Supervisor)
 # ===================================================
-# Used for:
-# - switch control
-# - notifications
-# - disk unmount
 ha_api_call() {
     local endpoint="$1"
     local payload="${2:-}"
@@ -75,12 +64,8 @@ ha_api_call() {
 }
 
 # ===================================================
-# Unified final handler
+# Final handler
 # ===================================================
-# Handles:
-# - final logging
-# - optional notifications
-# - correct exit code
 handle_final_result() {
     local success="$1"
     local msg="$2"
@@ -107,19 +92,18 @@ handle_final_result() {
 }
 
 # ===================================================
-# Start backup process
+# Start
 # ===================================================
 log_green "Starting user files backup"
 
 # ===================================================
-# Power ON backup disk (optional)
+# Power ON
 # ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
     log "Turning ON backup disk power"
     ha_api_call "services/switch/turn_on" \
         "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 
-    # Wait for switch to report ON state
     STATE="unknown"
     for i in {1..30}; do
         STATE=$(curl -s \
@@ -137,18 +121,15 @@ if [ "$ENABLE_POWER" = "true" ]; then
     done
 
     [ "$STATE" != "on" ] && handle_final_result false "Disk power did not turn on"
-
-    # Give the disk time to spin up and mount
     log "Waiting 40 seconds for disk initialization"
     sleep 40
 fi
 
 # ===================================================
-# Disk and source validation
+# Disk checks
 # ===================================================
 [ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup disk not mounted"
 
-# Check write access
 if touch "$MOUNT_POINT_BACKUP/.test" 2>/dev/null; then
     rm -f "$MOUNT_POINT_BACKUP/.test"
     log "Backup disk writable"
@@ -159,11 +140,10 @@ fi
 [ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "Nextcloud data not found"
 
 # ===================================================
-# Detect Nextcloud users
+# Users
 # ===================================================
 log "Searching Nextcloud users..."
 
-# A valid user directory must contain a 'files' subdirectory
 USERS=$(
     find "$NEXTCLOUD_DATA_PATH" \
         -mindepth 1 -maxdepth 1 \
@@ -175,18 +155,23 @@ USERS=$(
         ' bash {} +
 )
 
-[ -z "$USERS" ] && handle_final_result false "No Nextcloud users with files directory found"
+if [ -z "$USERS" ]; then
+    handle_final_result false "No Nextcloud users with files directory found"
+fi
 
 log_yellow "Users found: $(echo "$USERS" | paste -sd ', ')"
 
+
 # ===================================================
-# Backup loop (per user)
+# Backup loop
 # ===================================================
 SUCCESS=true
 
 for user in $USERS; do
     SRC="$NEXTCLOUD_DATA_PATH/$user/files/"
     DST="$MOUNT_POINT_BACKUP/$user/"
+
+    [ ! -d "$SRC" ] && log_yellow "User $user has no files, skipping" && continue
 
     mkdir -p "$DST"
     log_blue "Backing up user: $user"
@@ -198,8 +183,6 @@ for user in $USERS; do
         if rsync $RSYNC_OPTIONS "$SRC" "$DST/"; then
             FILES=$(find "$DST" -type f | wc -l)
             log_green "User $user done ($FILES files)"
-            SIZE=$(du -sh "$SRC" 2>/dev/null | awk '{print $1}')
-            log "User $user data size: $SIZE"
         else
             log_red "User $user backup failed"
             SUCCESS=false
@@ -208,7 +191,7 @@ for user in $USERS; do
 done
 
 # ===================================================
-# Unmount disk and power OFF (optional)
+# Unmount + Power OFF
 # ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
     log "Unmounting backup disk"
@@ -224,7 +207,7 @@ if [ "$ENABLE_POWER" = "true" ]; then
 fi
 
 # ===================================================
-# Final result
+# Finish
 # ===================================================
 [ "$SUCCESS" = true ] \
     && handle_final_result true "" \

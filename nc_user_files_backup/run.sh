@@ -5,17 +5,14 @@ set -euo pipefail
 # -----------------------------------------------------------
 # Load logging helpers
 # -----------------------------------------------------------
-# Provides colored logging functions and section formatting
 source /etc/nc_backup/logging.sh
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
 source /etc/nc_backup/config.sh
 
 # -----------------------------------------------------------
-# Load backup configuration file
+# Load backup configuration
 # -----------------------------------------------------------
-# This file is generated from settings.yaml and contains
-# shell variables used by the add-on runtime
 CONFIG_FILE="/etc/nc_backup/config.sh"
 
 if [ -f "$CONFIG_FILE" ]; then
@@ -27,17 +24,8 @@ else
 fi
 
 # -----------------------------------------------------------
-# Validate configuration
+# Load and validate config
 # -----------------------------------------------------------
-# load_config performs:
-# - parsing of settings.yaml
-# - validation of required parameters
-# - environment preparation
-#
-# Exit codes:
-#   0 - configuration is valid
-#   2 - first run detected (settings.yaml created)
-#   1 - configuration error
 load_config
 CONFIG_EXIT_CODE=$?
 
@@ -65,8 +53,6 @@ esac
 # -----------------------------------------------------------
 # Install cron job
 # -----------------------------------------------------------
-# The cron job triggers the backup script according to
-# the schedule defined in settings.yaml
 CRON_FILE="/etc/crontabs/root"
 
 log_blue "Installing cron job $BACKUP_SCHEDULE"
@@ -83,6 +69,5 @@ log_green "Cron job installed successfully"
 # -----------------------------------------------------------
 # Start cron daemon
 # -----------------------------------------------------------
-# Run cron in foreground so the container remains alive
 log_green "Starting cron daemon"
 exec crond -f -l 8
