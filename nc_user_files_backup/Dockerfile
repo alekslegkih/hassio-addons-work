@@ -1,26 +1,50 @@
-    ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
-    FROM $BUILD_FROM
+# -----------------------------------------------------------
+# Base image
+# -----------------------------------------------------------
+# Home Assistant OS compatible base image.
+# Required for proper Supervisor and add-on integration.
+ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
+FROM $BUILD_FROM
 
-    # Install dependencies. mc for testing
-    RUN apk add --no-cache \
-        curl \
-        python3 \
-        jq \
-        rsync \
-        yq \
-        bash \
-        busybox-suid \
-        mc 
 
-    # Create directory structure
-    RUN mkdir -p /etc/nc_backup
+# -----------------------------------------------------------
+# Install runtime dependencies
+# -----------------------------------------------------------
+RUN apk add --no-cache \
+    curl \
+    python3 \
+    jq \
+    rsync \
+    yq \
+    bash \
+    busybox-suid
 
-    # Copy scripts and configs
-    COPY run.sh /
-    COPY backup.sh /
-    COPY rootfs/etc/nc_backup/ /etc/nc_backup/
 
-    # Make scripts executable
-    RUN chmod a+x /run.sh /backup.sh /etc/nc_backup/config.sh /etc/nc_backup/logging.sh
+# -----------------------------------------------------------
+# Internal add-on directory structure
+# -----------------------------------------------------------
+RUN mkdir -p /etc/nc_backup
 
-    CMD [ "/run.sh" ]
+
+# -----------------------------------------------------------
+# Copy entrypoints and scripts
+# -----------------------------------------------------------
+COPY run.sh /
+COPY backup.sh /
+COPY rootfs/etc/nc_backup/ /etc/nc_backup/
+
+
+# -----------------------------------------------------------
+# Set executable permissions
+# -----------------------------------------------------------
+RUN chmod a+x \
+    /run.sh \
+    /backup.sh \
+    /etc/nc_backup/config.sh \
+    /etc/nc_backup/logging.sh
+
+
+# -----------------------------------------------------------
+# Container entrypoint
+# -----------------------------------------------------------
+CMD [ "/run.sh" ]
