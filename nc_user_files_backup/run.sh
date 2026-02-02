@@ -10,12 +10,6 @@ source /etc/nc_backup/logging.sh
 log_section  " Starting Nextcloud User Files Backup Add-on"
 
 # -----------------------------------------------------------
-# Load configuration helpers
-# -----------------------------------------------------------
-# Contains functions for reading and validating settings.yaml
-# source /etc/nc_backup/config.sh
-
-# -----------------------------------------------------------
 # Load backup configuration file
 # -----------------------------------------------------------
 # This file is generated from settings.yaml and contains
