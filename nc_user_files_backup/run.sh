@@ -1,17 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
-
-# -----------------------------------------------------------
 # Load logging helpers
-# -----------------------------------------------------------
+
 # Provides colored logging functions and section formatting
 source /etc/nc_backup/logging.sh
-log_section  " Starting Nextcloud User Files Backup Add-on"
 
-# -----------------------------------------------------------
+log_blue "====================================================="
+log_blue  " Starting Nextcloud User Files Backup Add-on"
+log_blue "====================================================="
+
 # Load backup configuration file
-# -----------------------------------------------------------
 # This file is generated from settings.yaml and contains
 # shell variables used by the add-on runtime
 source /etc/nc_backup/config.sh || {
@@ -19,10 +18,7 @@ source /etc/nc_backup/config.sh || {
     exit 1
 }
 
-
-# -----------------------------------------------------------
 # Validate configuration
-# -----------------------------------------------------------
 # load_config performs:
 # - parsing of settings.yaml
 # - validation of required parameters
@@ -59,15 +55,13 @@ case "$CONFIG_EXIT_CODE" in
         ;;
 esac
 
-# -----------------------------------------------------------
 # Install cron job
-# -----------------------------------------------------------
 # The cron job triggers the backup script according to
 # the schedule defined in settings.yaml
 CRON_FILE="/etc/crontabs/root"
 
 log "Installing cron job"
-log "Schedule: $BACKUP_SCHEDULE"
+log_blue "Schedule: $BACKUP_SCHEDULE"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
@@ -78,11 +72,8 @@ chmod 600 "$CRON_FILE"
 
 log_green "Cron job installed successfully"
 
-# -----------------------------------------------------------
 # Start cron daemon
-# -----------------------------------------------------------
 # Run cron in foreground so the container remains alive
-log_section "Runtime"
 log_green "Starting cron daemon"
 
 exec crond -f -l 8

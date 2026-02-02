@@ -1,23 +1,17 @@
 #!/bin/bash
 set -euo pipefail
 
-# ===================================================
 # Configuration loader and validator
 #
 # Responsibilities:
 # - Create default configuration on first run
 # - Validate user-provided settings.yaml
 # - Export validated settings as environment variables
-# ===================================================
 
-# ===================================================
 # Load logging helpers
-# ===================================================
 source /etc/nc_backup/logging.sh
 
-# ===================================================
 # Validate cron format
-# ===================================================
 # Performs a basic structural validation of cron expression.
 # Expects exactly 5 fields:
 #   minute hour day month weekday
@@ -38,9 +32,7 @@ validate_cron() {
     return 0
 }
 
-# ===================================================
 # Validate configuration structure and values
-# ===================================================
 # Checks:
 # - Required sections existence
 # - Required fields presence and non-empty values
@@ -122,9 +114,7 @@ validate_config() {
     return 0
 }
 
-# ===================================================
 # Load configuration
-# ===================================================
 # Return codes:
 #   0 - configuration loaded successfully
 #   1 - configuration error
@@ -137,7 +127,9 @@ load_config() {
 
     # --- First run
     if [ ! -f "$USER_CONFIG" ]; then
-        log_section "FIRST RUN DETECTED"
+        log_blue "====================================================="
+        log_yellow "FIRST RUN DETECTED"
+        log_blue "====================================================="
 
         if [ ! -f "$DEFAULT_CONFIG" ]; then
             log_red "Default config not found: $DEFAULT_CONFIG"
@@ -155,9 +147,7 @@ load_config() {
     # --- Validate config
     validate_config "$USER_CONFIG" || return 1
 
-    # ==================================================
     # Load validated settings into environment
-    # ===================================================
     export TIMEZONE=$(yq e '.general.timezone' "$USER_CONFIG")
     export BACKUP_SCHEDULE=$(yq e '.general.schedule // ""' "$USER_CONFIG")
     export RSYNC_OPTIONS=$(yq e '.general.rsync_options' "$USER_CONFIG")
@@ -180,6 +170,9 @@ load_config() {
     export MOUNT_POINT_BACKUP="/${MOUNT_PATH}/${LABEL_BACKUP}"
     export NEXTCLOUD_DATA_PATH="/${MOUNT_PATH}/${LABEL_DATA}/${DATA_DIR}"
     export DISC_SWITCH_SELECT="switch.${DISC_SWITCH}"
+    # --- Notify
+    export NOTIFICATION_SERVICE_SELECT="notify.${NOTIFICATION_SERVICE}"
+
 
     # --- Final cron validation
     validate_cron "$BACKUP_SCHEDULE" || return 1

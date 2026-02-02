@@ -1,27 +1,19 @@
 #!/bin/bash
 set -euo pipefail
 
-# ===================================================
-# Runtime paths
-# ===================================================
-# LOG_FILE  - persistent backup log (available from HA UI)
-# LOCKFILE  - prevents parallel or overlapping backup runs
-LOG_FILE="/config/backup.log"
-LOCKFILE="/data/backup.lock"
-
-# ===================================================
 # Load logging helpers
-# ===================================================
 source /etc/nc_backup/logging.sh
 
-# ===================================================
+# Runtime paths
+# LOCKFILE  - prevents parallel or overlapping backup runs
+LOCKFILE="/config/backup.lock"
+
 # Lock handling (prevent parallel executions)
-# ===================================================
 # If a lock exists:
-# - remove it if older than 12 hours (stale run)
+# - remove it if older than 3 hours (stale run)
 # - otherwise exit silently
 if [ -e "$LOCKFILE" ]; then
-    if [ "$(find "$LOCKFILE" -mmin +720 2>/dev/null)" ]; then
+    if [ "$(find "$LOCKFILE" -mmin +180 2>/dev/null)" ]; then
         log_yellow "Stale lock detected, removing"
         rm -f "$LOCKFILE"
     else
@@ -34,30 +26,27 @@ fi
 touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
-# ===================================================
 # Load validated configuration and environment
-# ===================================================
 # This provides all exported variables from settings.yaml
-source /etc/nc_backup/config.sh
+source /etc/nc_backup/config.sh || {
+    log_red "Failed to load configuration library (config.sh)"
+    exit 1
+}
 
-# ===================================================
 # Header / environment info
-# ===================================================
-log_section "Nextcloud User Files Backup"
+log_blue "Starting backup of Nextcloud user files"
 
 log "System: $(uname -s) $(uname -r)"
 log "Architecture: $(uname -m)"
 log "Timezone: $TIMEZONE"
-log "Backup disk: $MOUNT_POINT_BACKUP"
-log "Data source: $NEXTCLOUD_DATA_PATH"
-log "Power control: $ENABLE_POWER"
-log "Switch: $DISC_SWITCH_SELECT"
-log "Notifications: $ENABLE_NOTIFICATIONS"
-log "Service: $NOTIFICATION_SERVICE"
+log "Backup destination: $MOUNT_POINT_BACKUP"
+log "Nextcloud data source: $NEXTCLOUD_DATA_PATH"
+log "Backup disk power management enabled: $ENABLE_POWER"
+log "Backup disk power switch entity: $DISC_SWITCH_SELECT"
+log "Notifications enabled: $ENABLE_NOTIFICATIONS"
+log "Home Assistant notify service: $NOTIFICATION_SERVICE_SELECT"
 
-# ===================================================
 # Home Assistant Supervisor API helper
-# ===================================================
 # Used for:
 # - switch control
 # - notifications
@@ -74,9 +63,7 @@ ha_api_call() {
         "http://supervisor/core/api/$endpoint"
 }
 
-# ===================================================
 # Unified final handler
-# ===================================================
 # Handles:
 # - final logging
 # - optional notifications
@@ -86,7 +73,7 @@ handle_final_result() {
     local msg="$2"
 
     if [ "$success" = true ]; then
-        log_green "Backup completed successfully"
+        log_green "Nextcloud user files backup completed successfully"
         FINAL_MSG="$SUCCESS_MESSAGE"
     else
         log_red "Backup failed: $msg"
@@ -106,14 +93,9 @@ handle_final_result() {
     exit $([ "$success" = true ] && echo 0 || echo 1)
 }
 
-# ===================================================
-# Start backup process
-# ===================================================
-log_green "Starting user files backup"
+log_green "Starting rsync file copy process"
 
-# ===================================================
 # Power ON backup disk (optional)
-# ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
     log "Turning ON backup disk power"
     ha_api_call "services/switch/turn_on" \
@@ -137,29 +119,25 @@ if [ "$ENABLE_POWER" = "true" ]; then
         sleep 2
     done
 
-    [ "$STATE" != "on" ] && handle_final_result false "Disk power did not turn on"
+    [ "$STATE" != "on" ] && handle_final_result false "Backup disk power management failed"
     log "Waiting 40 seconds for disk initialization"
     sleep 40
 fi
 
-# ===================================================
 # Disk and source validation
-# ===================================================
-[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup disk not mounted"
+[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false"Backup destination dick is not mounted"
 
 # Check write access
 if touch "$MOUNT_POINT_BACKUP/.test" 2>/dev/null; then
     rm -f "$MOUNT_POINT_BACKUP/.test"
     log "Backup disk writable"
 else
-    handle_final_result false "Backup disk not writable"
+    handle_final_result false "Backup destination dick is not writable"
 fi
 
-[ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "Nextcloud data not found"
+[ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "No Nextcloud users with files found"
 
-# ===================================================
 # Detect Nextcloud users
-# ===================================================
 log "Searching Nextcloud users..."
 
 # A valid user directory must contain a 'files' subdirectory
@@ -180,10 +158,7 @@ fi
 
 log_yellow "Users found: $(echo "$USERS" | paste -sd ', ')"
 
-
-# ===================================================
 # Backup loop (per user)
-# ===================================================
 SUCCESS=true
 
 for user in $USERS; do
@@ -193,7 +168,7 @@ for user in $USERS; do
     [ ! -d "$SRC" ] && log_yellow "User $user has no files, skipping" && continue
 
     mkdir -p "$DST"
-    log_blue "Backing up user: $user"
+    log_blue "Copying files for user: $user"
 
     if [ "$TEST_MODE" = "true" ]; then
         sleep 5
@@ -201,17 +176,15 @@ for user in $USERS; do
     else
         if rsync $RSYNC_OPTIONS "$SRC" "$DST/"; then
             FILES=$(find "$DST" -type f | wc -l)
-            log_green "User $user done ($FILES files)"
+            log_green "User $user files backed up ($FILES files)"
         else
-            log_red "User $user backup failed"
+            log_red "Failed to back up files for user $user"
             SUCCESS=false
         fi
     fi
 done
 
-# ===================================================
 # Unmount disk and power OFF (optional)
-# ===================================================
 if [ "$ENABLE_POWER" = "true" ]; then
     log "Unmounting backup disk"
     curl -s -X POST \
@@ -225,9 +198,7 @@ if [ "$ENABLE_POWER" = "true" ]; then
         "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 fi
 
-# ===================================================
 # Final result
-# ===================================================
 [ "$SUCCESS" = true ] \
     && handle_final_result true "" \
-    || handle_final_result false "One or more users failed"
+    || handle_final_result false "One or more user file backups failed"

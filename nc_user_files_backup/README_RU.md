@@ -36,8 +36,7 @@
 ## Лицензия
 
 [![Addon License: MIT](https://img.shields.io/badge/Addon%20License-MIT-green.svg)](
-https://github.com/alekslegkih/hassio-addons/blob/main/LICENSE
-)
+https://github.com/alekslegkih/hassio-addons/blob/main/LICENSE)
 
 ## Документация
 
