@@ -65,27 +65,20 @@ ha_api_call() {
 # Unified final handler
 handle_final_result() {
     local success="$1"
-    local msg="$2"
+    local final_msg="$2"
+
+    if [ "$success" != true ] && [ -z "$final_msg" ]; then
+        final_msg="$ERROR_MESSAGE"
+    fi
 
     if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
-        PAYLOAD=$(jq -n --arg msg "$FINAL_MSG" '{"message":$msg}')
-        if ha_api_call "services/notify/$NOTIFICATIONS_SERVICE" "$PAYLOAD" >/dev/null; then
-            log_green "Notification sent via $NOTIFICATIONS_SERVICE"
-        else
-            log_red "Failed to send notification via $NOTIFICATIONS_SERVICE"
-        fi
+        PAYLOAD=$(jq -n --arg msg "$final_msg" '{"message":$msg}')
+        ha_api_call "services/notify/$NOTIFICATIONS_SERVICE" "$PAYLOAD" >/dev/null \
+            && log_green "Notification sent via $NOTIFICATIONS_SERVICE" \
+            || log_red "Failed to send notification via $NOTIFICATIONS_SERVICE"
     fi
 
-    if [ "$success" = true ]; then
-        log_green "Nextcloud user files backup completed successfully"
-        FINAL_MSG="$SUCCESS_MESSAGE"
-    else
-        log_red "Backup failed: $msg"
-        FINAL_MSG="$msg"
-    fi
-
-    log_green "-----------------------------------------------------------"
-    log_green "Backup scheduler started, waiting for scheduled time"
+    [ "$success" = true ] && log_green "$final_msg" || log_red "$final_msg"
 
     exit $([ "$success" = true ] && echo 0 || echo 1)
 }
@@ -194,5 +187,5 @@ fi
 
 # Final result
 [ "$SUCCESS" = true ] \
-    && handle_final_result true "" \
-    || handle_final_result false "One or more user file backups failed"
+    && handle_final_result true "$SUCCESS_MESSAGE" \
+    || handle_final_result false ""

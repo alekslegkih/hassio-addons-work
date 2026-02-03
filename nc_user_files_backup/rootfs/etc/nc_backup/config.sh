@@ -50,7 +50,7 @@ load_config() {
         log_red "Invalid configuration:"
         log_red "power.enabled is true, but power.disk_switch is empty"
         return 1
-    fi
+    fi 
 
     if [ "$NOTIFICATIONS_ENABLED" = "true" ] && [ -z "$NOTIFICATIONS_SERVICE" ]; then
         log_red "Invalid configuration:"
@@ -62,7 +62,23 @@ load_config() {
     export MOUNT_POINT_BACKUP="/${MOUNT_ROOT}/${BACKUP_DISK_LABEL}"
     export NEXTCLOUD_DATA_PATH="/${MOUNT_ROOT}/${DATA_DISK_LABEL}/${NEXTCLOUD_DATA_DIR}"
 
-    # --- Home Assistant entity helpers
+    # ---------------------------------------------------------------------
+    # Home Assistant entity helpers
+    #
+    # Pattern:
+    # - *_SERVICE / *_SWITCH variables store raw option values
+    #   (without Home Assistant domain prefix).
+    #   These values are used for Supervisor API calls.
+    #
+    # - *_SELECT variables add the required Home Assistant domain prefix
+    #   (e.g. notify., switch.) and are intended for:
+    #   - logging
+    #   - passing full entity IDs where required
+    #
+    # This separation avoids mixing API paths and entity IDs
+    # and keeps logging human-readable and HA-consistent.
+    # ---------------------------------------------------------------------
+
     if [ -n "$POWER_DISK_SWITCH" ]; then
         export DISC_SWITCH_SELECT="switch.${POWER_DISK_SWITCH}"
     fi
