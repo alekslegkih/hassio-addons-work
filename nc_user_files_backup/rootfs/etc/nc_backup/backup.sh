@@ -27,7 +27,6 @@ touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
 # Load validated configuration and environment
-# This provides all exported variables from settings.yaml
 source /etc/nc_backup/config.sh || {
     log_red "Failed to load configuration library (config.sh)"
     exit 1
@@ -35,7 +34,7 @@ source /etc/nc_backup/config.sh || {
 
 # Header / environment info
 log_blue "-----------------------------------------------------------"
-log_blue "Data $(_ts)" 
+log_blue "Date $(_ts)"
 log_blue "Starting backup of Nextcloud user files"
 log_blue "-----------------------------------------------------------"
 
@@ -44,16 +43,13 @@ log "Architecture: $(uname -m)"
 log "Timezone: $TIMEZONE"
 log "Backup destination: $MOUNT_POINT_BACKUP"
 log "Nextcloud data source: $NEXTCLOUD_DATA_PATH"
-log "Backup disk power management enabled: $ENABLE_POWER"
+log "Backup disk power management enabled: $POWER_ENABLED"
 log "Backup disk power switch entity: $DISC_SWITCH_SELECT"
-log "Notifications enabled: $ENABLE_NOTIFICATIONS"
+log "Notifications enabled: $NOTIFICATIONS_ENABLED"
 log "Home Assistant notify service: $NOTIFICATION_SERVICE_SELECT"
 log "-----------------------------------------------------------"
+
 # Home Assistant Supervisor API helper
-# Used for:
-# - switch control
-# - notifications
-# - disk unmount
 ha_api_call() {
     local endpoint="$1"
     local payload="${2:-}"
@@ -67,31 +63,27 @@ ha_api_call() {
 }
 
 # Unified final handler
-# Handles:
-# - final logging
-# - optional notifications
-# - correct exit code
 handle_final_result() {
     local success="$1"
     local msg="$2"
 
-    if [ "$ENABLE_NOTIFICATIONS" = "true" ]; then
+    if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
         PAYLOAD=$(jq -n --arg msg "$FINAL_MSG" '{"message":$msg}')
-        if ha_api_call "services/notify/$NOTIFICATION_SERVICE" "$PAYLOAD" >/dev/null; then
-            log_green "Notification sent via $NOTIFICATION_SERVICE"
+        if ha_api_call "services/notify/$NOTIFICATIONS_SERVICE" "$PAYLOAD" >/dev/null; then
+            log_green "Notification sent via $NOTIFICATIONS_SERVICE"
         else
-            log_red "Failed to send notification via $NOTIFICATION_SERVICE"
+            log_red "Failed to send notification via $NOTIFICATIONS_SERVICE"
         fi
     fi
 
     if [ "$success" = true ]; then
-        log_green "Nextcloud user files backup completed successfully"      
+        log_green "Nextcloud user files backup completed successfully"
         FINAL_MSG="$SUCCESS_MESSAGE"
     else
         log_red "Backup failed: $msg"
         FINAL_MSG="$msg"
     fi
-  
+
     log_green "-----------------------------------------------------------"
     log_green "Backup scheduler started, waiting for scheduled time"
 
@@ -101,12 +93,11 @@ handle_final_result() {
 log_green "Starting rsync file copy process"
 
 # Power ON backup disk (optional)
-if [ "$ENABLE_POWER" = "true" ]; then
+if [ "$POWER_ENABLED" = "true" ]; then
     log "Turning ON backup disk power"
     ha_api_call "services/switch/turn_on" \
         "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 
-    # Wait for switch to report ON state
     STATE="unknown"
     for i in {1..30}; do
         STATE=$(curl -s \
@@ -119,7 +110,6 @@ if [ "$ENABLE_POWER" = "true" ]; then
             break
         fi
 
-        # Give the disk time to spin up and mount
         log "Waiting for disk power ($i/30), state=$STATE"
         sleep 2
     done
@@ -130,14 +120,14 @@ if [ "$ENABLE_POWER" = "true" ]; then
 fi
 
 # Disk and source validation
-[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup destination dick is not mounted"
+[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup destination disk is not mounted"
 
 # Check write access
 if touch "$MOUNT_POINT_BACKUP/.test" 2>/dev/null; then
     rm -f "$MOUNT_POINT_BACKUP/.test"
     log "Backup disk writable"
 else
-    handle_final_result false "Backup destination dick is not writable"
+    handle_final_result false "Backup destination disk is not writable"
 fi
 
 [ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "No Nextcloud users with files found"
@@ -145,7 +135,6 @@ fi
 # Detect Nextcloud users
 log "Searching Nextcloud users..."
 
-# A valid user directory must contain a 'files' subdirectory
 USERS=$(
     find "$NEXTCLOUD_DATA_PATH" \
         -mindepth 1 -maxdepth 1 \
@@ -190,7 +179,7 @@ for user in $USERS; do
 done
 
 # Unmount disk and power OFF (optional)
-if [ "$ENABLE_POWER" = "true" ]; then
+if [ "$POWER_ENABLED" = "true" ]; then
     log "Unmounting backup disk"
     curl -s -X POST \
         -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
