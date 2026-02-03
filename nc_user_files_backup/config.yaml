@@ -32,7 +32,6 @@ schema:
 
   test_mode: bool
 
-
   storage:
     mount_path: str
     label_backup: str

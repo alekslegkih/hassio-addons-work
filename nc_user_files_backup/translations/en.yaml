@@ -1,0 +1,74 @@
+configuration:
+  timezone:
+    name: Timezone
+    description: Timezone used by the add-on and cron scheduler
+
+schedule:
+  name: Backup schedule
+  description: >
+    Schedule in cron format (5 fields).
+    Example: 0 3 * * * — every day at 03:00
+
+
+  rsync_options:
+    name: Rsync options
+    description: Command-line options passed to rsync
+
+  test_mode:
+    name: Test mode
+    description: Enable dry-run mode (no data will be copied)
+
+
+  storage:
+    name: Storage settings
+    description: Configuration of disks and data paths
+    fields:
+      mount_path:
+        name: Mount path
+        description: Base directory used for mounting external disks
+
+      label_backup:
+        name: Backup disk label
+        description: Filesystem label of the backup disk
+
+      label_data:
+        name: Data disk label
+        description: Filesystem label of the disk containing Nextcloud data
+
+      data_dir:
+        name: Data directory
+        description: Directory name of Nextcloud data on the data disk
+
+
+  power:
+    name: Power management
+    description: Power control settings for the backup disk
+    fields:
+      enable_power:
+        name: Enable power control
+        description: Enable power control for the backup disk
+
+      disc_switch:
+        name: Disk power switch
+        description: Power switch entity ID (without the switch. prefix)
+
+
+  notifications:
+    name: Notifications
+    description: Notification settings after backup execution
+    fields:
+      enable_notifications:
+        name: Enable notifications
+        description: Enable notifications after backup execution
+
+      notification_service:
+        name: Notification service
+        description: Notification service name (without the notify. prefix)
+
+      success_message:
+        name: Success message
+        description: Message sent on successful backup completion
+
+      error_message:
+        name: Error message
+        description: Message sent if the backup finishes with errors
