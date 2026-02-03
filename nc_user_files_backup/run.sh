@@ -7,8 +7,8 @@ set -euo pipefail
 source /etc/nc_backup/logging.sh
 
 log_blue "====================================================="
-log_blue "date '+%Y-%m-%d %H:%M:%S'"
 log_blue "Starting Nextcloud User Files Backup Add-on"
+log_blue $(_ts) 
 log_blue "====================================================="
 
 # Load backup configuration file
