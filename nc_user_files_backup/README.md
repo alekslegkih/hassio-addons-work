@@ -1,6 +1,6 @@
 # Nextcloud User Files Backup
 
-📘 [Прочтите README на русском](https://github.com/alekslegkih/hassio-addons/blob/main/nc_user_files_backup/README_RU.md)
+[Русская версия](https://github.com/alekslegkih/hassio-addons/blob/main/nc_user_files_backup/README_RU.md)
 
 Home Assistant add-on for automated backup of Nextcloud user files to an external
 USB storage device.
@@ -39,5 +39,5 @@ https://github.com/alekslegkih/hassio-addons/blob/main/LICENSE)
 
 ## Documentation
 
-Configuration and usage instructions are available here:  
-👉 [Documentation](https://github.com/alekslegkih/hassio-addons/blob/main/nc_user_files_backup/DOCS.md)
+Configuration documentation is located in the file:  
+[Documentation](https://github.com/alekslegkih/hassio-addons/blob/main/nc_user_files_backup/DOCS.md)

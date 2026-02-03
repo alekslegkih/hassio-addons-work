@@ -1,15 +1,23 @@
 #!/bin/bash
+# Strict mode:
+# -e  exit on error
+# -u  error on undefined variables
+# -o pipefail  fail pipelines correctly
 set -euo pipefail
 
-# Load logging helpers
+# ---------------------------------------------------------------------
+# Logging helpers
+# Provides colored log_* functions
+# ---------------------------------------------------------------------
 source /etc/nc_backup/logging.sh
 
-# Runtime paths
-# LOCKFILE  - prevents parallel or overlapping backup runs
+# ---------------------------------------------------------------------
+# Runtime lock
+# Prevents parallel or overlapping backup runs
+# ---------------------------------------------------------------------
 LOCKFILE="/config/backup.lock"
 
-# Lock handling (prevent parallel executions)
-# If a lock exists:
+# If lock exists:
 # - remove it if older than 3 hours (stale run)
 # - otherwise exit silently
 if [ -e "$LOCKFILE" ]; then
@@ -26,13 +34,21 @@ fi
 touch "$LOCKFILE"
 trap 'rm -f "$LOCKFILE"' EXIT
 
-# Load validated configuration and environment
+# ---------------------------------------------------------------------
+# Load validated configuration
+# config.sh:
+# - parses options.json
+# - validates required parameters
+# - exports runtime variables
+# ---------------------------------------------------------------------
 source /etc/nc_backup/config.sh || {
     log_red "Failed to load configuration library (config.sh)"
     exit 1
 }
 
+# ---------------------------------------------------------------------
 # Header / environment info
+# ---------------------------------------------------------------------
 log_blue "-----------------------------------------------------------"
 log_blue "Date $(_ts)"
 log_blue "Starting backup of Nextcloud user files"
@@ -49,7 +65,18 @@ log "Notifications enabled: $NOTIFICATIONS_ENABLED"
 log "Home Assistant notify service: $NOTIFICATION_SERVICE_SELECT"
 log "-----------------------------------------------------------"
 
+# ---------------------------------------------------------------------
 # Home Assistant Supervisor API helper
+#
+# Used for:
+# - switch control
+# - notifications
+# - unmount requests
+#
+# Output is intentionally suppressed (>/dev/null)
+# to avoid JSON arrays ([]), which Supervisor returns
+# and which pollute logs.
+# ---------------------------------------------------------------------
 ha_api_call() {
     local endpoint="$1"
     local payload="${2:-}"
@@ -63,41 +90,71 @@ ha_api_call() {
         >/dev/null
 }
 
+# ---------------------------------------------------------------------
 # Unified final handler
+#
+# Responsibilities:
+# - choose correct final message
+# - send notification (if enabled)
+# - log final status
+# - exit with correct code
+#
+# IMPORTANT:
+# - final_msg may be empty
+# - ERROR_MESSAGE is used as fallback
+# ---------------------------------------------------------------------
 handle_final_result() {
     local success="$1"
     local final_msg="$2"
 
+    # Fallback to configured error message if none provided
     if [ "$success" != true ] && [ -z "$final_msg" ]; then
         final_msg="$ERROR_MESSAGE"
     fi
 
+    # Send notification if enabled
     if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
         PAYLOAD=$(jq -n --arg msg "$final_msg" '{"message":$msg}')
-        ha_api_call "services/notify/$NOTIFICATION_SERVICE_SELECT" "$PAYLOAD" \
+        ha_api_call "services/notify/$NOTIFICATIONS_SERVICE" "$PAYLOAD" \
             && log_green "Notification sent via $NOTIFICATION_SERVICE_SELECT" \
             || log_red "Failed to send notification via $NOTIFICATION_SERVICE_SELECT"
     fi
 
+    # Final log output
     [ "$success" = true ] && log_green "$final_msg" || log_red "$final_msg"
 
+    # Add-on stays alive (cron scheduler)
     log_green "-----------------------------------------------------------"
     log_green "Backup scheduler started, waiting for scheduled time"
 
     exit $([ "$success" = "true" ] && echo 0 || echo 1)
-
 }
 
-log_green "Starting rsync file copy process"
+# ---------------------------------------------------------------------
+# Sanity check: source disk must be mounted
+# Fail fast before any power or rsync actions
+# ---------------------------------------------------------------------
+log_green "Starting backup process"
 
+if ! mountpoint -q "$NEXTCLOUD_DATA_PATH"; then
+    handle_final_result false "Nextcloud data disk is not mounted"
+fi
+
+# ---------------------------------------------------------------------
 # Power ON backup disk (optional)
+#
+# Flow:
+# - turn switch ON
+# - poll entity state
+# - wait for disk initialization
+# ---------------------------------------------------------------------
 if [ "$POWER_ENABLED" = "true" ]; then
     log "Turning ON backup disk power"
     ha_api_call "services/switch/turn_on" \
         "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 
     STATE="unknown"
-    for i in {1..30}; do
+    for i in {1..10}; do
         STATE=$(curl -s \
             -H "Authorization: Bearer $SUPERVISOR_TOKEN" \
             http://supervisor/core/api/states/$DISC_SWITCH_SELECT \
@@ -113,11 +170,14 @@ if [ "$POWER_ENABLED" = "true" ]; then
     done
 
     [ "$STATE" != "on" ] && handle_final_result false "Backup disk power management failed"
-    log "Waiting 40 seconds for disk initialization"
-    sleep 40
+
+    log "Waiting 30 seconds for disk initialization"
+    sleep 30
 fi
 
-# Disk and source validation
+# ---------------------------------------------------------------------
+# Backup destination validation
+# ---------------------------------------------------------------------
 [ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup destination disk is not mounted"
 
 # Check write access
@@ -128,9 +188,13 @@ else
     handle_final_result false "Backup destination disk is not writable"
 fi
 
+# Ensure Nextcloud data directory exists
 [ ! -d "$NEXTCLOUD_DATA_PATH" ] && handle_final_result false "No Nextcloud users with files found"
 
+# ---------------------------------------------------------------------
 # Detect Nextcloud users
+# A valid user directory must contain 'files/'
+# ---------------------------------------------------------------------
 log "Searching Nextcloud users..."
 
 USERS=$(
@@ -150,7 +214,11 @@ fi
 
 log_yellow "Users found: $(echo "$USERS" | paste -sd ', ')"
 
+# ---------------------------------------------------------------------
 # Backup loop (per user)
+# ---------------------------------------------------------------------
+log_green "Starting rsync file copy process"
+
 SUCCESS=true
 
 for user in $USERS; do
@@ -176,7 +244,9 @@ for user in $USERS; do
     fi
 done
 
+# ---------------------------------------------------------------------
 # Unmount disk and power OFF (optional)
+# ---------------------------------------------------------------------
 if [ "$POWER_ENABLED" = "true" ]; then
     log "Unmounting backup disk"
     curl -s -X POST \
@@ -190,7 +260,9 @@ if [ "$POWER_ENABLED" = "true" ]; then
         "$(jq -n --arg e "$DISC_SWITCH_SELECT" '{entity_id:$e}')"
 fi
 
+# ---------------------------------------------------------------------
 # Final result
+# ---------------------------------------------------------------------
 [ "$SUCCESS" = true ] \
     && handle_final_result true "$SUCCESS_MESSAGE" \
     || handle_final_result false ""

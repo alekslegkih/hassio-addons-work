@@ -9,9 +9,7 @@ RUN apk add --no-cache \
     jq \
     rsync \
     bash \
-    busybox-suid \
-    mc 
-# !!!!Remove mc when running in production
+    busybox-suid
 
 # Internal add-on directory structure
 RUN mkdir -p /etc/nc_backup
