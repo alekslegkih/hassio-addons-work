@@ -34,6 +34,7 @@ source /etc/nc_backup/config.sh || {
 }
 
 # Header / environment info
+log_blue "Data $(_ts)" 
 log_blue "Starting backup of Nextcloud user files"
 
 log "System: $(uname -s) $(uname -r)"

@@ -8,7 +8,6 @@ source /etc/nc_backup/logging.sh
 
 log_blue "====================================================="
 log_blue "Starting Nextcloud User Files Backup Add-on"
-log_blue "$(_ts)" 
 log_blue "====================================================="
 
 # Load backup configuration file
@@ -66,15 +65,16 @@ log_blue "Schedule: $BACKUP_SCHEDULE"
 log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
-$BACKUP_SCHEDULE /backup.sh
+$BACKUP_SCHEDULE /etc/nc_backup/backup.sh
 EOF
 
 chmod 600 "$CRON_FILE"
 
-log_green "Cron job installed successfully"
-
+log "Cron job installed successfully"
+log "Starting cron daemon"
 # Start cron daemon
 # Run cron in foreground so the container remains alive
-log_green "Starting cron daemon"
+
+log_green "Backup scheduler started, waiting for scheduled time"
 
 exec crond -f -l 8

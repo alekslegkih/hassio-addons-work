@@ -18,14 +18,14 @@ RUN mkdir -p /etc/nc_backup
 
 # Copy entrypoints and scripts
 COPY run.sh /
-COPY backup.sh /
+# COPY backup.sh /
 COPY rootfs/etc/nc_backup/ /etc/nc_backup/
 
 # Make scripts executable
 # Set executable permissions
 RUN chmod a+x \
     /run.sh \
-    /backup.sh \
+    /etc/nc_backup/backup.sh \
     /etc/nc_backup/config.sh \
     /etc/nc_backup/logging.sh
 
