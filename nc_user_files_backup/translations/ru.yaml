@@ -6,7 +6,7 @@ configuration:
       Пример: 0 3 * * * — каждый день в 03:00
   rsync_options:
     name: Параметры rsync
-    description: Параметры командной строки, передаваемые rsync
+    description: Параметры rsync. Не меняйте, если не понимаете их назначения.
   storage:
     name: Настройки хранилища
     description: Конфигурация дисков и путей к данным

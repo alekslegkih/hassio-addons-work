@@ -130,7 +130,7 @@ if [ "$ENABLE_POWER" = "true" ]; then
 fi
 
 # Disk and source validation
-[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false"Backup destination dick is not mounted"
+[ ! -d "$MOUNT_POINT_BACKUP" ] && handle_final_result false "Backup destination dick is not mounted"
 
 # Check write access
 if touch "$MOUNT_POINT_BACKUP/.test" 2>/dev/null; then

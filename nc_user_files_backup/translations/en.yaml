@@ -6,7 +6,7 @@ configuration:
       Example: 0 3 * * * — every day at 03:00
   rsync_options:
     name: Rsync options
-    description: Command-line options passed to rsync
+    description: Rsync options. Do not change unless you understand their purpose
   storage:
     name: Storage settings
     description: Configuration of disks and data paths

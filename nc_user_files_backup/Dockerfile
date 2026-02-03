@@ -8,10 +8,10 @@ RUN apk add --no-cache \
     python3 \
     jq \
     rsync \
-    yq \
     bash \
     busybox-suid \
     mc 
+# !!!!Remove mc when running in production
 
 # Internal add-on directory structure
 RUN mkdir -p /etc/nc_backup
