@@ -1,6 +1,6 @@
 name: "Nextcloud User Files Backup"
 description: "Backup Nextcloud user files to external USB drive"
-version: "0.6.1"
+version: "0.6.2"
 slug: "nc_user_files_backup"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 
@@ -24,7 +24,7 @@ map:
   - share:rw
 
 schema:
-  timezone: str(Europe/Moscow|Europe/Berlin|Europe/London|Europe/Paris|UTC)
+  timezone: str
 
   schedule: match(^([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)$)
 
@@ -32,18 +32,43 @@ schema:
 
   test_mode: bool
 
+
   storage:
     mount_path: str
     label_backup: str
     label_data: str
     data_dir: str
 
+
   power:
     enable_power: bool
     disc_switch: str?
+
 
   notifications:
     enable_notifications: bool
     notification_service: str?
     success_message: str?
     error_message: str?
+
+options:
+  timezone: "Europe/Moscow"
+  schedule: "0 3 * * *"
+  rsync_options: "-aHAX --delete"
+  test_mode: false
+
+  storage:
+    mount_path: "media"
+    label_backup: "NC_backup"
+    label_data: "Cloud"
+    data_dir: "data"
+
+  power:
+    enable_power: true
+    disc_switch: ""
+
+  notifications:
+    enable_notifications: true
+    notification_service: "send_message"
+    success_message: "Nextcloud user files backup completed successfully!"
+    error_message: "Nextcloud user files backup completed with errors!"
