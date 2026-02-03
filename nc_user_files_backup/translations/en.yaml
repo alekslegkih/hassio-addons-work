@@ -4,54 +4,72 @@ configuration:
     description: >
       Schedule in cron format (5 fields).
       Example: 0 3 * * * — every day at 03:00
+
   rsync_options:
     name: Rsync options
-    description: Rsync options. Do not change unless you understand their purpose
+    description: >
+      Rsync options. Do not change unless you understand their purpose.
+
+  timezone:
+    name: Timezone
+    description: Timezone used by the add-on and cron scheduler
+
+  test_mode:
+    name: Test mode
+    description: Enable dry-run mode (no data will be copied)
+
   storage:
     name: Storage settings
     description: Configuration of disks and data paths
     fields:
-      mount_path:
-        name: Mount path
-        description: Base directory used for mounting external disks
-      label_backup:
+      mount_root:
+        name: Mount root
+        description: Base directory where external disks are mounted
+
+      backup_disk_label:
         name: Backup disk label
-        description: Filesystem label of the backup disk
-      label_data:
+        description: Filesystem label of the disk used for backups
+
+      data_disk_label:
         name: Data disk label
         description: Filesystem label of the disk containing Nextcloud data
-      data_dir:
-        name: Data directory
-        description: Directory name of Nextcloud data on the data disk
+
+      nextcloud_data_dir:
+        name: Nextcloud data directory
+        description: Directory containing Nextcloud user data on the data disk
+
   power:
     name: Power management
     description: Power control settings for the backup disk
     fields:
-      enable_power:
-        name: Enable power control
+      enabled:
+        name: Enable power management
         description: Enable power control for the backup disk
-      disc_switch:
+
+      disk_switch:
         name: Disk power switch
-        description: Power switch entity ID (without the switch. prefix)
+        description: >
+          Power switch entity ID (without the switch. prefix).
+          Required if power management is enabled.
+
   notifications:
     name: Notifications
     description: Notification settings after backup execution
     fields:
-      enable_notifications:
+      enabled:
         name: Enable notifications
         description: Enable notifications after backup execution
-      notification_service:
+
+      service:
         name: Notification service
-        description: Notification service name (without the notify. prefix)
+        description: >
+          Notification service name (without the notify. prefix).
+          Required if notifications are enabled.
+
       success_message:
         name: Success message
         description: Message sent on successful backup completion
+
       error_message:
         name: Error message
         description: Message sent if the backup finishes with errors
-  timezone:
-    name: Timezone
-    description: Timezone used by the add-on and cron scheduler
-  test_mode:
-    name: Test mode
-    description: Enable dry-run mode (no data will be copied)

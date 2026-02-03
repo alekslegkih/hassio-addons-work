@@ -1,180 +1,76 @@
 #!/bin/bash
 set -euo pipefail
 
-# Configuration loader and validator
+# Configuration loader (options.json → environment)
 #
 # Responsibilities:
-# - Create default configuration on first run
-# - Validate user-provided settings.yaml
-# - Export validated settings as environment variables
+# - Load validated configuration from /data/options.json
+# - Export environment variables used by runtime scripts
+# - Prepare derived and helper values
+#
+# Structural validation is handled by Home Assistant Supervisor via config.yaml schema
 
 # Load logging helpers
 source /etc/nc_backup/logging.sh
 
-# Validate cron format
-# Performs a basic structural validation of cron expression.
-# Expects exactly 5 fields:
-#   minute hour day month weekday
-#
-# This does NOT validate cron semantics, only field count
-validate_cron() {
-    local CRON="$1"
-    local FIELDS
-    FIELDS=$(echo "$CRON" | awk '{print NF}')
+OPTIONS_FILE="/data/options.json"
 
-    if [ "$FIELDS" -ne 5 ]; then
-        log_red "Invalid cron format: '$CRON'"
-        log_yellow "Expected: minute hour day month weekday"
-        log_yellow "Example: 0 3 * * *"
-        return 1
-    fi
-
-    return 0
-}
-
-# Validate configuration structure and values
-# Checks:
-# - Required sections existence
-# - Required fields presence and non-empty values
-# - Boolean fields validity (true / false)
-#
-# Does NOT validate filesystem paths or external resources.
-validate_config() {
-    log "Validating configuration file structure and values"
-    local USER_CONFIG="$1"
-
-    local required_fields=(
-        "general.timezone"
-        "general.schedule"
-        "general.rsync_options"
-        "general.test_mode"
-        "storage.mount_path"
-        "storage.label_backup"
-        "storage.label_data"
-        "storage.data_dir"
-        "power.enable_power"
-        "power.disc_switch"
-        "notifications.enable_notifications"
-        "notifications.notification_service"
-        "notifications.success_message"
-        "notifications.error_message"
-    )
-
-    # Expected top-level sections
-    local expected_sections=("general" "storage" "power" "notifications")
-    local actual_sections
-    actual_sections=$(yq e 'keys | .[]' "$USER_CONFIG" 2>/dev/null | tr '\n' ' ')
-
-    local has_errors=false
-    local current_section=""
-
-    # --- Validate sections
-    for section in "${expected_sections[@]}"; do
-        if [[ ! " $actual_sections " =~ " $section " ]]; then
-            log_red "[MISSING SECTION] $section"
-            log_yellow "Actual sections: $actual_sections"
-            has_errors=true
-        fi
-    done
-
-    # --- Validate fields
-    for field in "${required_fields[@]}"; do
-        local value
-        value=$(yq e ".$field" "$USER_CONFIG" 2>/dev/null)
-
-        local section="${field%.*}"
-        local key="${field#*.}"
-
-        if [[ " $actual_sections " =~ " $section " ]]; then
-            if [ "$value" = "null" ] || [ -z "$value" ]; then
-                if [ "$current_section" != "$section" ]; then
-                    log_red "[FIELD ERRORS in $section]"
-                    current_section="$section"
-                fi
-                log_red "Missing or empty: $key"
-                has_errors=true
-            fi
-
-            # Explicit boolean validation
-            if [[ "$key" =~ ^(test_mode|enable_power|enable_notifications)$ ]] &&
-               [[ "$value" != "true" && "$value" != "false" ]]; then
-                log_red "Invalid boolean: $section.$key = $value"
-                log_yellow "Expected: true | false"
-                has_errors=true
-            fi
-        fi
-    done
-
-    if [ "$has_errors" = true ]; then
-        log_red "Configuration validation failed"
-        return 1
-    fi
-    
-    return 0
-}
-
-# Load configuration
-# Return codes:
-#   0 - configuration loaded successfully
-#   1 - configuration error
-#   2 - first run, default config created
 load_config() {
-    log "Loading configuration"
+    log "Loading configuration from options.json"
 
-    local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"
-    local USER_CONFIG="/config/settings.yaml"
-
-    # --- First run
-    if [ ! -f "$USER_CONFIG" ]; then
-        log_blue "====================================================="
-        log_yellow "FIRST RUN DETECTED"
-        log_blue "====================================================="
-
-        if [ ! -f "$DEFAULT_CONFIG" ]; then
-            log_red "Default config not found: $DEFAULT_CONFIG"
-            return 1
-        fi
-
-        cp "$DEFAULT_CONFIG" "$USER_CONFIG"
-        log_green "Default configuration created: $USER_CONFIG"
-        log_yellow "Please edit settings.yaml and restart the addon"
-        return 2
+    if [ ! -f "$OPTIONS_FILE" ]; then
+        log_red "Configuration file not found: $OPTIONS_FILE"
+        return 1
     fi
 
-    log "Using configuration: $USER_CONFIG"
+    # --- General
+    export BACKUP_SCHEDULE="$(jq -r '.schedule' "$OPTIONS_FILE")"
+    export RSYNC_OPTIONS="$(jq -r '.rsync_options' "$OPTIONS_FILE")"
+    export TIMEZONE="$(jq -r '.timezone' "$OPTIONS_FILE")"
+    export TEST_MODE="$(jq -r '.test_mode' "$OPTIONS_FILE")"
 
-    # --- Validate config
-    validate_config "$USER_CONFIG" || return 1
+    # --- Storage (NEW KEYS)
+    export MOUNT_ROOT="$(jq -r '.storage.mount_root' "$OPTIONS_FILE")"
+    export BACKUP_DISK_LABEL="$(jq -r '.storage.backup_disk_label' "$OPTIONS_FILE")"
+    export DATA_DISK_LABEL="$(jq -r '.storage.data_disk_label' "$OPTIONS_FILE")"
+    export NEXTCLOUD_DATA_DIR="$(jq -r '.storage.nextcloud_data_dir' "$OPTIONS_FILE")"
 
-    # Load validated settings into environment
-    export TIMEZONE=$(yq e '.general.timezone' "$USER_CONFIG")
-    export BACKUP_SCHEDULE=$(yq e '.general.schedule // ""' "$USER_CONFIG")
-    export RSYNC_OPTIONS=$(yq e '.general.rsync_options' "$USER_CONFIG")
-    export TEST_MODE=$(yq e '.general.test_mode' "$USER_CONFIG")
+    # --- Power (NEW KEYS)
+    export POWER_ENABLED="$(jq -r '.power.enabled' "$OPTIONS_FILE")"
+    export POWER_DISK_SWITCH="$(jq -r '.power.disk_switch // ""' "$OPTIONS_FILE")"
 
-    export MOUNT_PATH=$(yq e '.storage.mount_path' "$USER_CONFIG")
-    export LABEL_BACKUP=$(yq e '.storage.label_backup' "$USER_CONFIG")
-    export LABEL_DATA=$(yq e '.storage.label_data' "$USER_CONFIG")
-    export DATA_DIR=$(yq e '.storage.data_dir' "$USER_CONFIG")
+    # --- Notifications (NEW KEYS)
+    export NOTIFICATIONS_ENABLED="$(jq -r '.notifications.enabled' "$OPTIONS_FILE")"
+    export NOTIFICATIONS_SERVICE="$(jq -r '.notifications.service // ""' "$OPTIONS_FILE")"
+    export SUCCESS_MESSAGE="$(jq -r '.notifications.success_message // ""' "$OPTIONS_FILE")"
+    export ERROR_MESSAGE="$(jq -r '.notifications.error_message // ""' "$OPTIONS_FILE")"
 
-    export ENABLE_POWER=$(yq e '.power.enable_power' "$USER_CONFIG")
-    export DISC_SWITCH=$(yq e '.power.disc_switch' "$USER_CONFIG")
+    # --- Cross-field validation (NOT covered by schema)
+    if [ "$POWER_ENABLED" = "true" ] && [ -z "$POWER_DISK_SWITCH" ]; then
+        log_red "Invalid configuration:"
+        log_red "power.enabled is true, but power.disk_switch is empty"
+        return 1
+    fi
 
-    export ENABLE_NOTIFICATIONS=$(yq e '.notifications.enable_notifications' "$USER_CONFIG")
-    export NOTIFICATION_SERVICE=$(yq e '.notifications.notification_service' "$USER_CONFIG")
-    export SUCCESS_MESSAGE=$(yq e '.notifications.success_message' "$USER_CONFIG")
-    export ERROR_MESSAGE=$(yq e '.notifications.error_message' "$USER_CONFIG")
+    if [ "$NOTIFICATIONS_ENABLED" = "true" ] && [ -z "$NOTIFICATIONS_SERVICE" ]; then
+        log_red "Invalid configuration:"
+        log_red "notifications.enabled is true, but notifications.service is empty"
+        return 1
+    fi
 
-    # --- Derived
-    export MOUNT_POINT_BACKUP="/${MOUNT_PATH}/${LABEL_BACKUP}"
-    export NEXTCLOUD_DATA_PATH="/${MOUNT_PATH}/${LABEL_DATA}/${DATA_DIR}"
-    export DISC_SWITCH_SELECT="switch.${DISC_SWITCH}"
-    # --- Notify
-    export NOTIFICATION_SERVICE_SELECT="notify.${NOTIFICATION_SERVICE}"
+    # --- Derived paths
+    export MOUNT_POINT_BACKUP="/${MOUNT_ROOT}/${BACKUP_DISK_LABEL}"
+    export NEXTCLOUD_DATA_PATH="/${MOUNT_ROOT}/${DATA_DISK_LABEL}/${NEXTCLOUD_DATA_DIR}"
 
+    # --- Home Assistant entity helpers
+    if [ -n "$POWER_DISK_SWITCH" ]; then
+        export DISC_SWITCH_SELECT="switch.${POWER_DISK_SWITCH}"
+    fi
 
-    # --- Final cron validation
-    validate_cron "$BACKUP_SCHEDULE" || return 1
+    if [ -n "$NOTIFICATIONS_SERVICE" ]; then
+        export NOTIFICATION_SERVICE_SELECT="notify.${NOTIFICATIONS_SERVICE}"
+    fi
 
+    log_green "Configuration loaded successfully"
     return 0
 }

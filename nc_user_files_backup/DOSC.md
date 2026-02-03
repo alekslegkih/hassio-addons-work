@@ -3,9 +3,9 @@
 ## Configuration
 
 Home Assistant OS does not provide direct access to USB storage devices.
-To use external disks, they must be mounted to the system in advance
+To use external disks, they must be mounted into the system in advance
 and assigned unique filesystem labels.
-These labels are used by the add-on to identify the devices.
+These labels are used by the add-on to identify devices.
 
 ## System Preparation
 
@@ -13,161 +13,125 @@ Configuring disk mounting requires SSH access to the Home Assistant OS host syst
 
 [![Developer docs – Home Assistant OS Debugging](https://img.shields.io/badge/Developer%20docs-Home%20Assistant-blue?logo=home-assistant&logoColor=white&labelColor=41B3A3)](https://developers.home-assistant.io/docs/operating-system/debugging)
 
-After obtaining SSH access:
+After obtaining access:
 
 1. Connect the external disk.
-2. Assign a filesystem label to the disk partition.
+2. Assign a filesystem label to the partition.
 3. Configure automatic mounting using the label.
 
-Example of assigning a label to a partition:
+Example of assigning a filesystem label:
 
 ```bash
 
-    e2label /dev/sdb2 NC_backup
+  e2label /dev/sdb2 NC_backup
 ```
 
 For automatic disk mounting, the author uses a solution based on
-[udev](https://gist.github.com/microraptor/be170ea642abeb937fc030175ae89c0c).  
-Solution author: [microraptor](https://gist.github.com/microraptor)  
+[udev](https://gist.github.com/microraptor/be170ea642abeb937fc030175ae89c0c).
+Solution author: [microraptor](https://gist.github.com/microraptor).  
 Configure the mounting rule according to the provided instructions.
 
-## Add-on Settings
+---
 
-### Configuration File
+## Configuration Parameters
 
-After the first start, the add-on creates the configuration file settings.yaml.  
-The file must be edited according to your system configuration.
+### General Settings
 
-Configuration file location:
+- **Timezone (`timezone`)**  
+  Time zone used by the add-on for task scheduling and logging.
 
-```bash
+- **Schedule (`schedule`)**  
+  Backup execution schedule in cron format  
+  (minute, hour, day of month, month, day of week).
 
-Inside the add-on:
+- **Rsync options (`rsync_options`)**  
+  Options passed to the `rsync` utility during backup execution.  
+  Used to control file copy and synchronization behavior.
 
-    /config/settings.yaml
+- **Test mode (`test_mode`)**  
+  When enabled, the backup process is simulated without actual  
+  data copying.  
+  Used to verify configuration and add-on logic.
 
-In the Home Assistant user interface:
+### Storage Settings (`storage`)
 
-    /addon_configs/901f89a0_nc_user_files_backup/settings.yaml
-```
+- **Mount root (`mount_root`)**  
+  Base directory where mounted external disks are available  
+  (for example: `media`).
 
-### Configuration Parameters
+- **Backup disk label (`backup_disk_label`)**  
+  Filesystem label of the external disk used to store backups.
 
-```text
-general.  
-General settings
+- **Data disk label (`data_disk_label`)**  
+  Filesystem label of the disk that contains Nextcloud data.
 
-- timezone (string, default: Europe/Moscow)  
-  Time zone
+- **Nextcloud data directory (`nextcloud_data_dir`)**  
+  Directory inside the data disk that contains Nextcloud user files.
 
-- schedule (string, default: 0 3 * * *)  
-  Backup schedule in cron format
+### Power Management (`power`)
 
-- rsync_options (string, default: -aHAX --delete)  
-  rsync command-line options
+- **Enable power management (`enabled`)**  
+  Enables power control of the external backup disk  
+  using a smart switch.
 
-- test_mode (bool, default: false)  
-  Test execution mode
+- **Disk power switch (`disk_switch`)**  
+  Home Assistant switch entity ID **without the `switch.` domain**  
+  (for example: `usb_disk_power`).
 
-storage.  
-Storage settings
+> [!WARNING]  
+> If power management is enabled (`enabled: true`),  
+> the `disk_switch` parameter is **required**.  
+> If the switch is not specified, the add-on will not start.
 
-- mount_path (string, default: media)  
-  Base directory for disk mounting
+### Notifications (`notifications`)
 
-- label_backup (string, default: NC_backup)  
-  Backup disk filesystem label
+- **Enable notifications (`enabled`)**  
+  Enables sending notifications about the backup result.
 
-- label_data (string, default: Cloud)  
-  Data disk filesystem label
+- **Notification service (`service`)**  
+  Home Assistant notification service **without the `notify.` domain**  
+  (for example: `send_message`, `telegram`).
 
-- data_dir (string, default: data)  
-  Nextcloud data directory
+- **Success message (`success_message`)**  
+  Notification text sent when the backup completes successfully.
 
-power.  
-Power management
+- **Error message (`error_message`)**  
+  Notification text sent when the backup fails.
 
-- enable_power (bool, default: true)  
-  Enable disk power control
+> [!WARNING]  
+> If notifications are enabled (`enabled: true`),  
+> the `service` parameter is **required**.  
+> If the service is not specified, the add-on will not start.
 
-- disc_switch (string, default: usb_disk_power)  
-  Power switch entity ID without the switch domain
-
-notifications.  
-Notifications
-
-- enable_notifications (bool, default: true)  
-  Enable notifications
-
-- notification_service (string, default: send_message)  
-  Notification service name without the notify domain
-
-- success_message (string)  
-  Message sent on successful completion
-
-- error_message (string)  
-  Message sent on error
-```
-
-### Example Configuration
-
-```yaml
-    general:
-      timezone: Europe/Moscow
-      schedule: 0 3 * * *
-      rsync_options: -aHAX --delete
-      test_mode: false
-
-    storage:
-      mount_path: media
-      label_backup: NC_backup
-      label_data: Data
-      data_dir: data
-
-    power:
-      enable_power: true
-      disc_switch: usb_disk_power
-
-    notifications:
-      enable_notifications: false
-      notification_service: telegram_cannel_system
-      success_message: Nextcloud user files backup completed successfully!
-      error_message: Nextcloud backup completed with errors!
-```
-
-Configuration changes are applied on the next add-on start.
+---
 
 ## Operation Flow
 
-When executed, the add-on performs the following steps:
+When started, the add-on performs the following steps:
 
-1. Enables power to the backup disk (if power control is enabled)
+1. Turns on power to the external disk (if power management is enabled)
 2. Mounts the backup disk
 3. Performs incremental backup using rsync
 4. Unmounts the disk
-5. Disables disk power (if enabled)
+5. Turns off disk power (if enabled)
 6. Sends a notification with the execution result
 
-### First Start
-
-On the first start, the add-on creates the configuration file and exits
-without performing a backup.
-After editing settings.yaml, the add-on is ready for use.
-
-### Subsequent Starts
-
-On subsequent starts, the add-on initializes the cron scheduler and waits
+On startup, the add-on initializes the cron scheduler and waits
 for the configured execution time.
+
+---
 
 ### Test Mode
 
 When test_mode is enabled, the add-on does not perform actual data copying.
-All steps are simulated without modifying any files.
+Instead, all steps are simulated without modifying any files.
+
+---
 
 ## Common Issues
 
-- Configuration validation failed  
-  Check the syntax and required parameters in settings.yaml.
-
 - Backup disk not mounted  
-  Verify filesystem labels and udev rules.
+  Check filesystem labels and udev rules.
+
+- Configuration validation failed  
+  Verify the add-on settings in the Home Assistant user interface.
