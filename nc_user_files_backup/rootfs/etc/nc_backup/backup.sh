@@ -37,6 +37,7 @@ source /etc/nc_backup/config.sh || {
 log_blue "-----------------------------------------------------------"
 log_blue "Data $(_ts)" 
 log_blue "Starting backup of Nextcloud user files"
+log_blue "-----------------------------------------------------------"
 
 log "System: $(uname -s) $(uname -r)"
 log "Architecture: $(uname -m)"
@@ -47,7 +48,7 @@ log "Backup disk power management enabled: $ENABLE_POWER"
 log "Backup disk power switch entity: $DISC_SWITCH_SELECT"
 log "Notifications enabled: $ENABLE_NOTIFICATIONS"
 log "Home Assistant notify service: $NOTIFICATION_SERVICE_SELECT"
-
+log "-----------------------------------------------------------"
 # Home Assistant Supervisor API helper
 # Used for:
 # - switch control
@@ -74,29 +75,25 @@ handle_final_result() {
     local success="$1"
     local msg="$2"
 
+    if [ "$ENABLE_NOTIFICATIONS" = "true" ]; then
+        PAYLOAD=$(jq -n --arg msg "$FINAL_MSG" '{"message":$msg}')
+        if ha_api_call "services/notify/$NOTIFICATION_SERVICE" "$PAYLOAD" >/dev/null; then
+            log_green "Notification sent via $NOTIFICATION_SERVICE"
+        else
+            log_red "Failed to send notification via $NOTIFICATION_SERVICE"
+        fi
+    fi
+
     if [ "$success" = true ]; then
-        log_green "Nextcloud user files backup completed successfully"
-        log_green "-----------------------------------------------------------"
-        log_green "Backup scheduler started, waiting for scheduled time"
-        
+        log_green "Nextcloud user files backup completed successfully"      
         FINAL_MSG="$SUCCESS_MESSAGE"
     else
         log_red "Backup failed: $msg"
-        log_green "-----------------------------------------------------------"
-        log_green "Backup scheduler started, waiting for scheduled time"
-        
         FINAL_MSG="$msg"
     fi
-
-    if [ "$ENABLE_NOTIFICATIONS" = "true" ]; then
-        log "Sending notification…"
-        PAYLOAD=$(jq -n --arg msg "$FINAL_MSG" '{"message":$msg}')
-        if ha_api_call "services/notify/$NOTIFICATION_SERVICE" "$PAYLOAD" >/dev/null; then
-            log_green "Notification sent"
-        else
-            log_red "Failed to send notification"
-        fi
-    fi
+  
+    log_green "-----------------------------------------------------------"
+    log_green "Backup scheduler started, waiting for scheduled time"
 
     exit $([ "$success" = true ] && echo 0 || echo 1)
 }
