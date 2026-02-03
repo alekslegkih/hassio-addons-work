@@ -1,6 +1,6 @@
 name: "Nextcloud User Files Backup"
 description: "Backup Nextcloud user files to external USB drive"
-version: "0.6.0"
+version: "0.5.11"
 slug: "nc_user_files_backup"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 
@@ -23,120 +23,27 @@ map:
   - media:rw
   - share:rw
 
-
 schema:
-  timezone:
-    type: str
-    required: true
-    default: "Europe/Moscow"
-    description: "Timezone used by the add-on and cron scheduler"
-    enum:
-      - "Europe/Moscow"
-      - "Europe/Berlin"
-      - "Europe/London"
-      - "Europe/Paris"
-      - "UTC"
+  timezone: str(Europe/Moscow|Europe/Berlin|Europe/London|Europe/Paris|UTC)
 
-  schedule:
-    type: str
-    required: true
-    default: "0 3 * * *"
-    description: "Backup schedule in cron format (5 fields)"
-    pattern: '^([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)$'
+  schedule: match(^([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)$)
 
-  rsync_options:
-    type: str
-    required: true
-    default: "-aHAX --delete"
-    description: "rsync command-line options"
+  rsync_options: str
 
-  test_mode:
-    type: bool
-    required: true
-    default: false
-    description: "Enable test (dry-run) mode"
-
+  test_mode: bool
 
   storage:
-    type: dict
-    required: true
-    description: "Storage configuration"
-    schema:
-      mount_path:
-        type: str
-        required: true
-        default: "media"
-        description: "Base directory used for mounting external disks"
-
-      label_backup:
-        type: str
-        required: true
-        default: "NC_backup"
-        description: "Filesystem label of the backup disk"
-
-      label_data:
-        type: str
-        required: true
-        default: "Cloud"
-        description: "Filesystem label of the disk containing Nextcloud data"
-
-      data_dir:
-        type: str
-        required: true
-        default: "data"
-        description: "Directory name of Nextcloud data on the data disk"
-
+    mount_path: str
+    label_backup: str
+    label_data: str
+    data_dir: str
 
   power:
-    type: dict
-    required: true
-    description: "Power management settings"
-    schema:
-      enable_power:
-        type: bool
-        required: true
-        default: true
-        description: "Enable power control for the backup disk"
-
-      disc_switch:
-        type: str
-        required: false
-        description: "Power switch entity ID (without the switch. domain)"
-        depends_on:
-          enable_power: true
-
+    enable_power: bool
+    disc_switch: str?
 
   notifications:
-    type: dict
-    required: true
-    description: "Notification settings"
-    schema:
-      enable_notifications:
-        type: bool
-        required: true
-        default: true
-        description: "Enable notifications after backup execution"
-
-      notification_service:
-        type: str
-        required: false
-        default: "send_message"
-        description: "Notification service name (without the notify. domain)"
-        depends_on:
-          enable_notifications: true
-
-      success_message:
-        type: str
-        required: false
-        default: "Nextcloud user files backup completed successfully!"
-        description: "Message sent on successful backup completion"
-        depends_on:
-          enable_notifications: true
-
-      error_message:
-        type: str
-        required: false
-        default: "Nextcloud user files backup completed with errors!"
-        description: "Message sent if the backup finishes with errors"
-        depends_on:
-          enable_notifications: true
+    enable_notifications: bool
+    notification_service: str?
+    success_message: str?
+    error_message: str?
