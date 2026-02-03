@@ -36,7 +36,7 @@ CONFIG_EXIT_CODE=$?
 
 case "$CONFIG_EXIT_CODE" in
     0)
-        log_green "Backup configuration loaded and validated successfully"
+        log_green "The configuration has been successfully verified and loaded."
         ;;
     2)
         log_yellow "-----------------------------------------------------------"
@@ -59,10 +59,10 @@ esac
 # The cron job triggers the backup script according to
 # the schedule defined in settings.yaml
 CRON_FILE="/etc/crontabs/root"
-
+log "-----------------------------------------------------------"
 log "Installing cron job"
 log_blue "Schedule: $BACKUP_SCHEDULE"
-log "Cron file: $CRON_FILE"
+# log "Cron file: $CRON_FILE"
 
 cat > "$CRON_FILE" <<EOF
 $BACKUP_SCHEDULE /etc/nc_backup/backup.sh
@@ -75,6 +75,7 @@ log "Starting cron daemon"
 # Start cron daemon
 # Run cron in foreground so the container remains alive
 
+log_green "-----------------------------------------------------------"
 log_green "Backup scheduler started, waiting for scheduled time"
 
 exec crond -f -l 8

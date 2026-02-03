@@ -34,6 +34,7 @@ source /etc/nc_backup/config.sh || {
 }
 
 # Header / environment info
+log_blue "-----------------------------------------------------------"
 log_blue "Data $(_ts)" 
 log_blue "Starting backup of Nextcloud user files"
 
@@ -75,9 +76,15 @@ handle_final_result() {
 
     if [ "$success" = true ]; then
         log_green "Nextcloud user files backup completed successfully"
+        log_green "-----------------------------------------------------------"
+        log_green "Backup scheduler started, waiting for scheduled time"
+        
         FINAL_MSG="$SUCCESS_MESSAGE"
     else
         log_red "Backup failed: $msg"
+        log_green "-----------------------------------------------------------"
+        log_green "Backup scheduler started, waiting for scheduled time"
+        
         FINAL_MSG="$msg"
     fi
 

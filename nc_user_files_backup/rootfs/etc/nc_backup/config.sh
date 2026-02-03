@@ -109,8 +109,7 @@ validate_config() {
         log_red "Configuration validation failed"
         return 1
     fi
-
-    log_green "Configuration validation passed"
+    
     return 0
 }
 
@@ -120,7 +119,7 @@ validate_config() {
 #   1 - configuration error
 #   2 - first run, default config created
 load_config() {
-    log "Loading backup configuration"
+    log "Loading configuration"
 
     local DEFAULT_CONFIG="/etc/nc_backup/defaults.yaml"
     local USER_CONFIG="/config/settings.yaml"
@@ -142,7 +141,7 @@ load_config() {
         return 2
     fi
 
-    log "Using existing configuration: $USER_CONFIG"
+    log "Using configuration: $USER_CONFIG"
 
     # --- Validate config
     validate_config "$USER_CONFIG" || return 1
