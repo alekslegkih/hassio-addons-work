@@ -37,11 +37,11 @@ load_config() {
 
     # --- Power (NEW KEYS)
     export POWER_ENABLED="$(jq -r '.power.enabled' "$OPTIONS_FILE")"
-    export POWER_DISK_SWITCH="$(jq -r '.power.disk_switch // ""' "$OPTIONS_FILE")"
+    POWER_DISK_SWITCH="$(jq -r '.power.disk_switch // ""' "$OPTIONS_FILE")"
 
     # --- Notifications (NEW KEYS)
     export NOTIFICATIONS_ENABLED="$(jq -r '.notifications.enabled' "$OPTIONS_FILE")"
-    export NOTIFICATIONS_SERVICE="$(jq -r '.notifications.service // ""' "$OPTIONS_FILE")"
+    NOTIFICATIONS_SERVICE="$(jq -r '.notifications.service // ""' "$OPTIONS_FILE")"
     export SUCCESS_MESSAGE="$(jq -r '.notifications.success_message // ""' "$OPTIONS_FILE")"
     export ERROR_MESSAGE="$(jq -r '.notifications.error_message // ""' "$OPTIONS_FILE")"
 

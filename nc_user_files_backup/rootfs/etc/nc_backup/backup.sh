@@ -59,7 +59,8 @@ ha_api_call() {
         -H "Content-Type: application/json" \
         -X POST \
         -d "$payload" \
-        "http://supervisor/core/api/$endpoint"
+        "http://supervisor/core/api/$endpoint" \
+        >/dev/null
 }
 
 # Unified final handler
@@ -73,14 +74,18 @@ handle_final_result() {
 
     if [ "$NOTIFICATIONS_ENABLED" = "true" ]; then
         PAYLOAD=$(jq -n --arg msg "$final_msg" '{"message":$msg}')
-        ha_api_call "services/notify/$NOTIFICATIONS_SERVICE" "$PAYLOAD" >/dev/null \
-            && log_green "Notification sent via $NOTIFICATIONS_SERVICE" \
-            || log_red "Failed to send notification via $NOTIFICATIONS_SERVICE"
+        ha_api_call "services/notify/$NOTIFICATION_SERVICE_SELECT" "$PAYLOAD" \
+            && log_green "Notification sent via $NOTIFICATION_SERVICE_SELECT" \
+            || log_red "Failed to send notification via $NOTIFICATION_SERVICE_SELECT"
     fi
 
     [ "$success" = true ] && log_green "$final_msg" || log_red "$final_msg"
 
-    exit $([ "$success" = true ] && echo 0 || echo 1)
+    log_green "-----------------------------------------------------------"
+    log_green "Backup scheduler started, waiting for scheduled time"
+
+    exit $([ "$success" = "true" ] && echo 0 || echo 1)
+
 }
 
 log_green "Starting rsync file copy process"
