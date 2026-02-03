@@ -40,8 +40,8 @@ _log_raw() {
 
     [ -z "$plain" ] && return 0
 
-    echo -e "$(_ts) $colored"
-    echo "$(_ts) $plain" >> "$LOG_FILE"
+    echo -e "$colored"
+    echo "$plain" >> "$LOG_FILE"
 }
 
 # Public logging helpers
