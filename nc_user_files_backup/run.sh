@@ -28,8 +28,6 @@ source /etc/nc_backup/config.sh || {
     exit 1
 }
 
-log "Loading and validating backup configuration"
-
 # Load and validate configuration
 # Expected return codes:
 #   0 - configuration valid

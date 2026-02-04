@@ -22,8 +22,7 @@ source /etc/nc_backup/logging.sh
 OPTIONS_FILE="/data/options.json"
 
 load_config() {
-    log "Loading configuration from options.json"
-
+    log "Loading backup configuration"
     # ------------------------------------------------------------------------
     # Sanity check
     # ------------------------------------------------------------------------
@@ -118,6 +117,5 @@ load_config() {
         export NOTIFICATION_SERVICE_SELECT="notify.${NOTIFICATIONS_SERVICE}"
     fi
 
-    log_green "Configuration loaded successfully"
     return 0
 }
