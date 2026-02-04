@@ -1,6 +1,6 @@
 name: "Backup Sync to RAID"
 description: "Automatically sync backups from system drive to external RAID array"
-version: "0.0.3"
+version: "0.0.4"
 slug: "backup_sync"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
@@ -12,7 +12,7 @@ boot: "auto"
 map:
   - backup:rw
   - media:rw
-  - config:rw
+  - addon_config:rw
 options:
   dest_dir: "/media/Backup"
   max_copies: 5
