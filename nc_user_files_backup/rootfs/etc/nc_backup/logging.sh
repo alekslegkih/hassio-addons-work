@@ -44,9 +44,9 @@ NC='\033[0m'   # No Color (reset)
 # Home Assistant already prepends timestamps to logs,
 # so adding our own would create visual noise and duplication.
 #
-# _ts() {
-#     date '+%Y-%m-%d %H:%M:%S'
-# }
+_ts() {
+    date '+%Y-%m-%d %H:%M:%S'
+}
 
 # ------------------------------------------------------------------
 # Internal logging primitive
