@@ -90,7 +90,7 @@ load_config() {
     # ------------------------------------------------------------------------
     export MOUNT_POINT_BACKUP="/${MOUNT_ROOT}/${BACKUP_DISK_LABEL}"
     export DATA_MOUNT_POINT="/${MOUNT_ROOT}/${DATA_DISK_LABEL}"
-    export NEXTCLOUD_DATA_PATH="/${DATA_MOUNT_POINT}/${NEXTCLOUD_DATA_DIR}"
+    export NEXTCLOUD_DATA_PATH="${DATA_MOUNT_POINT}/${NEXTCLOUD_DATA_DIR}"
 
     # ------------------------------------------------------------------------
     # Home Assistant entity helpers
