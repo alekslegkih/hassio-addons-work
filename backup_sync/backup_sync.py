@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Скрипт для автоматической синхронизации бэкапов с системного диска на RAID массив
-Использует watchdog для отслеживания изменений файловой системы
+Backup synchronization script for Home Assistant OS
+Syncs backups from system drive to external RAID array using watchdog
 """
 
 import os
@@ -10,13 +10,12 @@ import time
 import shutil
 import logging
 import threading
-from datetime import datetime
 from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 import argparse
 
-# Настройка логирования
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -27,173 +26,172 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Fixed source directory (always /backup in HAOS addons)
+SOURCE_DIR = Path("/backup")
+
 class BackupSyncHandler(FileSystemEventHandler):
-    """Обработчик событий файловой системы для синхронизации бэкапов"""
+    """File system event handler for backup synchronization"""
     
-    def __init__(self, source_dir, dest_dir, max_copies, wait_time):
-        self.source_dir = Path(source_dir)
+    def __init__(self, dest_dir, max_copies, wait_time):
         self.dest_dir = Path(dest_dir)
         self.max_copies = max_copies
         self.wait_time = wait_time
         self.processing_files = set()
         self.lock = threading.Lock()
         
-        # Создаем целевую директорию если не существует
+        # Create destination directory if it doesn't exist
         self.dest_dir.mkdir(parents=True, exist_ok=True)
         
-        logger.info(f"Инициализация монитора бэкапов")
-        logger.info(f"Источник: {self.source_dir}")
-        logger.info(f"Назначение: {self.dest_dir}")
-        logger.info(f"Максимум копий: {self.max_copies}")
-        logger.info(f"Ожидание перед копированием: {self.wait_time} секунд")
+        logger.info("Initializing backup monitor")
+        logger.info(f"Source (fixed): {SOURCE_DIR}")
+        logger.info(f"Destination: {self.dest_dir}")
+        logger.info(f"Max copies to keep: {self.max_copies}")
+        logger.info(f"Wait before copying: {self.wait_time} seconds")
+        
+        # Validate source directory
+        if not SOURCE_DIR.exists():
+            logger.error(f"Source directory does not exist: {SOURCE_DIR}")
+            logger.error("This should never happen in HAOS. Check addon configuration.")
+            sys.exit(1)
     
     def on_created(self, event):
-        """Обработка создания нового файла"""
+        """Handle new file creation events"""
         if not event.is_directory:
             file_path = Path(event.src_path)
             if file_path.suffix == '.tar':
                 self.process_backup(file_path)
     
     def process_backup(self, file_path):
-        """Обработка нового бэкап-файла"""
-        # Проверяем, не обрабатывается ли уже этот файл
+        """Process a new backup file"""
+        # Check if file is already being processed
         with self.lock:
             if file_path in self.processing_files:
                 return
             self.processing_files.add(file_path)
         
         try:
-            logger.info(f"Обнаружен новый бэкап: {file_path.name}")
+            logger.info(f"New backup detected: {file_path.name}")
             
-            # Ждем указанное время перед копированием
-            logger.info(f"Ожидание {self.wait_time} секунд перед копированием...")
+            # Wait specified time before copying
+            logger.info(f"Waiting {self.wait_time} seconds before copying...")
             time.sleep(self.wait_time)
             
-            # Проверяем, существует ли файл (на случай если он был удален за время ожидания)
+            # Check if file still exists (might have been deleted during wait)
             if not file_path.exists():
-                logger.warning(f"Файл {file_path.name} больше не существует, пропускаем")
+                logger.warning(f"File {file_path.name} no longer exists, skipping")
                 return
             
-            # Проверяем размер файла (должен быть больше 0)
+            # Check file size (should be > 0)
             file_size = file_path.stat().st_size
             if file_size == 0:
-                logger.error(f"Файл {file_path.name} пустой, пропускаем")
+                logger.error(f"File {file_path.name} is empty, skipping")
                 return
             
-            logger.info(f"Размер файла: {file_size / (1024*1024):.2f} MB")
+            logger.info(f"File size: {file_size / (1024*1024):.2f} MB")
             
-            # Копируем файл
+            # Copy file
             dest_file = self.dest_dir / file_path.name
-            logger.info(f"Копирование в {dest_file}")
+            logger.info(f"Copying to {dest_file}")
             
             shutil.copy2(file_path, dest_file)
             
-            # Проверяем успешность копирования
+            # Verify copy was successful
             if dest_file.exists() and dest_file.stat().st_size == file_size:
-                logger.info(f"Файл успешно скопирован")
-                # Удаляем старые копии
+                logger.info(f"File successfully copied")
+                # Clean up old backups
                 self.cleanup_old_backups()
             else:
-                logger.error(f"Ошибка при копировании: размеры не совпадают")
+                logger.error(f"Copy error: file sizes don't match")
                 
         except Exception as e:
-            logger.error(f"Ошибка при обработке файла {file_path.name}: {e}")
+            logger.error(f"Error processing file {file_path.name}: {e}")
         finally:
             with self.lock:
                 self.processing_files.discard(file_path)
     
     def cleanup_old_backups(self):
-        """Удаление старых бэкапов при превышении лимита"""
+        """Remove old backups when exceeding limit"""
         try:
-            # Получаем все файлы .tar в целевой директории
+            # Get all .tar files in destination directory
             backup_files = list(self.dest_dir.glob("*.tar"))
             
             if len(backup_files) <= self.max_copies:
-                logger.info(f"Количество бэкапов в пределах лимита: {len(backup_files)}")
+                logger.info(f"Backup count within limit: {len(backup_files)}")
                 return
             
-            # Сортируем файлы по времени изменения (старые первыми)
+            # Sort files by modification time (oldest first)
             backup_files.sort(key=lambda x: x.stat().st_mtime)
             
-            # Определяем сколько файлов нужно удалить
+            # Calculate how many files to delete
             to_delete = len(backup_files) - self.max_copies
-            logger.info(f"Удаление {to_delete} старых бэкапов")
+            logger.info(f"Deleting {to_delete} oldest backups")
             
-            # Удаляем самые старые файлы
+            # Delete the oldest files
             for i in range(to_delete):
                 old_file = backup_files[i]
-                logger.info(f"Удаление: {old_file.name}")
+                logger.info(f"Deleting: {old_file.name}")
                 old_file.unlink()
                 
         except Exception as e:
-            logger.error(f"Ошибка при удалении старых бэкапов: {e}")
+            logger.error(f"Error cleaning up old backups: {e}")
     
     def sync_existing_backups(self):
-        """Синхронизация уже существующих бэкапов при старте"""
-        logger.info("Проверка существующих бэкапов...")
-        source_backups = list(self.source_dir.glob("*.tar"))
+        """Sync existing backups on startup"""
+        logger.info("Checking for existing backups...")
+        source_backups = list(SOURCE_DIR.glob("*.tar"))
         
         for backup in source_backups:
             dest_backup = self.dest_dir / backup.name
             if not dest_backup.exists():
-                logger.info(f"Обнаружен несинхронизированный бэкап: {backup.name}")
+                logger.info(f"Found unsynced backup: {backup.name}")
                 self.process_backup(backup)
 
 def parse_arguments():
-    """Парсинг аргументов командной строки"""
-    parser = argparse.ArgumentParser(description='Синхронизация бэкапов на RAID массив')
-    parser.add_argument('--source-dir', default='/backup', 
-                       help='Исходная директория с бэкапами')
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='Synchronize backups to RAID array')
     parser.add_argument('--dest-dir', default='/media/Backup',
-                       help='Целевая директория на RAID')
+                       help='Destination directory on RAID')
     parser.add_argument('--max-copies', type=int, default=5,
-                       help='Максимальное количество копий на RAID')
+                       help='Maximum number of copies to keep on RAID')
     parser.add_argument('--wait-time', type=int, default=300,
-                       help='Время ожидания перед копированием (секунды)')
-    parser.add_argument('--check-existing', action='store_true',
-                       help='Проверить и синхронизировать существующие бэкапы при старте')
+                       help='Wait time before copying (seconds)')
+    parser.add_argument('--sync-existing-on-start', action='store_true',
+                       help='Check and sync existing backups on startup')
     
     return parser.parse_args()
 
 def main():
-    """Основная функция"""
+    """Main function"""
     args = parse_arguments()
     
-    # Проверяем существование исходной директории
-    source_path = Path(args.source_dir)
-    if not source_path.exists():
-        logger.error(f"Исходная директория не существует: {source_path}")
-        sys.exit(1)
-    
-    # Создаем обработчик и наблюдатель
+    # Create handler and observer
     event_handler = BackupSyncHandler(
-        source_dir=args.source_dir,
         dest_dir=args.dest_dir,
         max_copies=args.max_copies,
         wait_time=args.wait_time
     )
     
-    # Синхронизируем существующие бэкапы если нужно
-    if args.check_existing:
+    # Sync existing backups if requested
+    if args.sync_existing_on_start:
         event_handler.sync_existing_backups()
     
-    # Создаем и запускаем наблюдатель
+    # Create and start observer
     observer = Observer()
-    observer.schedule(event_handler, args.source_dir, recursive=False)
+    observer.schedule(event_handler, str(SOURCE_DIR), recursive=False)
     
     try:
-        logger.info("Запуск мониторинга директории...")
+        logger.info("Starting directory monitoring...")
         observer.start()
         
-        # Бесконечный цикл
+        # Keep running
         while True:
             time.sleep(1)
             
     except KeyboardInterrupt:
-        logger.info("Остановка мониторинга...")
+        logger.info("Stopping monitor...")
         observer.stop()
     except Exception as e:
-        logger.error(f"Критическая ошибка: {e}")
+        logger.error(f"Critical error: {e}")
         observer.stop()
         sys.exit(1)
     finally:

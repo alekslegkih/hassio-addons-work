@@ -1,6 +1,6 @@
 name: "Backup Sync to RAID"
-description: "Автоматическая синхронизация бэкапов на внешний RAID массив с использованием watchdog"
-version: "0.0.2"
+description: "Automatically sync backups from system drive to external RAID array"
+version: "0.0.3"
 slug: "backup_sync"
 url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
@@ -14,14 +14,12 @@ map:
   - media:rw
   - config:rw
 options:
-  source_dir: "/backup"
   dest_dir: "/media/Backup"
   max_copies: 5
   wait_time: 300
-  check_existing: true
+  sync_existing_on_start: true
 schema:
-  source_dir: "str"
   dest_dir: "str"
   max_copies: "int"
   wait_time: "int"
-  check_existing: "bool"
+  sync_existing_on_start: "bool"

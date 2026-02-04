@@ -2,8 +2,11 @@ ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
 FROM $BUILD_FROM
 
 # Устанавливаем Python и необходимые пакеты
-RUN apk add --no-cache python3 py3-pip && \
-    python3 -m pip install --no-cache-dir watchdog
+RUN apk add --no-cache python3 \
+            py3-pip \
+            jq \
+            && \
+            python3 -m pip install --no-cache-dir watchdog
 
 # Копируем скрипт
 COPY backup_sync.py /usr/local/bin/backup_sync.py
