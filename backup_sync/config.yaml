@@ -17,8 +17,9 @@ privileged:
 hassio_api: true
 hassio_role: admin
 homeassistant_api: true
-  
+
 full_access: true
+
 map:
   - backup:rw
   - media:rw

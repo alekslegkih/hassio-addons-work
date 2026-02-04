@@ -1,4 +1,4 @@
-ARG BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
 FROM $BUILD_FROM
 
 # Устанавливаем Python и необходимые пакеты
