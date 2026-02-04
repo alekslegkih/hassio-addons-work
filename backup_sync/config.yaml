@@ -1,19 +1,23 @@
 name: "Backup Sync to RAID"
+description: "Автоматическая синхронизация бэкапов на внешний RAID массив с использованием watchdog"
 version: "0.0.1"
 slug: "backup_sync"
-description: "Автоматическая синхронизация бэкапов на внешний RAID массив с использованием watchdog"
+url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
-  - armhf
-  - armv7
   - aarch64
   - amd64
-  - i386
+image: "ghcr.io/alekslegkih/backup_sync"
 startup: "application"
 boot: "auto"
 host_network: true
 host_dbus: true
 privileged:
   - SYS_ADMIN
+
+hassio_api: true
+hassio_role: admin
+homeassistant_api: true
+  
 full_access: true
 map:
   - backup:rw

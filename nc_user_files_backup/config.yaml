@@ -3,64 +3,51 @@ description: "Backup Nextcloud user files to external USB drive"
 version: "0.8.5"
 slug: "nc_user_files_backup"
 url: "https://github.com/alekslegkih/hassio-addons-work"
-
 arch:
   - aarch64
   - amd64
-
 image: "ghcr.io/alekslegkih/nc_user_files_backup"
-
 startup: services
 boot: auto
 init: false
-
 hassio_api: true
 hassio_role: admin
 homeassistant_api: true
-
 map:
   - addon_config:rw
   - media:rw
   - share:rw
-
 schema:
   schedule: match(^([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)\s+([\d\*/,\-]+)$)
   rsync_options: str
   timezone: str
   test_mode: bool
-
   storage:
     mount_root: str
     backup_disk_label: str
     data_disk_label: str
     nextcloud_data_dir: str
-
   power:
     enabled: bool
     disk_switch: str?
-
   notifications:
     enabled: bool
     service: str?
     success_message: str?
     error_message: str?
-
 options:
   schedule: "0 3 * * *"
   rsync_options: "-aHAX --delete"
   timezone: "Europe/Moscow"
   test_mode: false
-
   storage:
     mount_root: "media"
     backup_disk_label: "NC_backup"
     data_disk_label: "Cloud"
     nextcloud_data_dir: "data"
-
   power:
     enabled: true
     disk_switch: ""
-
   notifications:
     enabled: true
     service: "send_message"
