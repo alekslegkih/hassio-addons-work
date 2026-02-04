@@ -131,13 +131,18 @@ handle_final_result() {
 }
 
 # ---------------------------------------------------------------------
-# Sanity check: source disk must be mounted
-# Fail fast before any power or rsync actions
+# Sanity check: Nextcloud data source
 # ---------------------------------------------------------------------
 log_green "Starting backup process"
 
-if ! mountpoint -q "$NEXTCLOUD_DATA_PATH"; then
+# 1. Disk must be mounted
+if ! mountpoint -q "/${DATA_MOUNT_POINT}"; then
     handle_final_result false "Nextcloud data disk is not mounted"
+fi
+
+# 2. Data directory must exist
+if [ ! -d "$NEXTCLOUD_DATA_PATH" ]; then
+    handle_final_result false "Nextcloud data directory not found"
 fi
 
 # ---------------------------------------------------------------------

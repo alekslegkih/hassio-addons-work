@@ -43,10 +43,10 @@ load_config() {
     # ------------------------------------------------------------------------
     # Storage settings
     # ------------------------------------------------------------------------
-    export MOUNT_ROOT="$(jq -r '.storage.mount_root' "$OPTIONS_FILE")"
-    export BACKUP_DISK_LABEL="$(jq -r '.storage.backup_disk_label' "$OPTIONS_FILE")"
-    export DATA_DISK_LABEL="$(jq -r '.storage.data_disk_label' "$OPTIONS_FILE")"
-    export NEXTCLOUD_DATA_DIR="$(jq -r '.storage.nextcloud_data_dir' "$OPTIONS_FILE")"
+    MOUNT_ROOT="$(jq -r '.storage.mount_root' "$OPTIONS_FILE")"
+    BACKUP_DISK_LABEL="$(jq -r '.storage.backup_disk_label' "$OPTIONS_FILE")"
+    DATA_DISK_LABEL="$(jq -r '.storage.data_disk_label' "$OPTIONS_FILE")"
+    NEXTCLOUD_DATA_DIR="$(jq -r '.storage.nextcloud_data_dir' "$OPTIONS_FILE")"
 
     # ------------------------------------------------------------------------
     # Power management
@@ -90,7 +90,8 @@ load_config() {
     # These are the actual filesystem paths used by backup.sh
     # ------------------------------------------------------------------------
     export MOUNT_POINT_BACKUP="/${MOUNT_ROOT}/${BACKUP_DISK_LABEL}"
-    export NEXTCLOUD_DATA_PATH="/${MOUNT_ROOT}/${DATA_DISK_LABEL}/${NEXTCLOUD_DATA_DIR}"
+    export DATA_MOUNT_POINT="/${MOUNT_ROOT}/${DATA_DISK_LABEL}"
+    export NEXTCLOUD_DATA_PATH="/${DATA_MOUNT_POINT}/${NEXTCLOUD_DATA_DIR}"
 
     # ------------------------------------------------------------------------
     # Home Assistant entity helpers
