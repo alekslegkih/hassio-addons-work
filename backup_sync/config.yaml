@@ -13,7 +13,6 @@ privileged:
   - SYS_ADMIN
   - DAC_READ_SEARCH
 devices:
-  - /dev/sda
   - /dev/sdb  
   - /dev/sdc
   - /dev/sdd
