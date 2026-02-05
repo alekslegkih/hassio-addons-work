@@ -32,9 +32,6 @@ jobs:
             BASE="${{ github.event.before }}"
             HEAD="${{ github.sha }}"
 
-            echo "Diff base: $BASE"
-            echo "Diff head: $HEAD"
-
             CHANGED_DIRS=$(git diff --name-only "$BASE" "$HEAD" | cut -d/ -f1 | sort -u)
 
             ADDONS=""
@@ -46,27 +43,21 @@ jobs:
           fi
 
           if [[ -z "${ADDONS// }" ]]; then
-            echo "No addons to build"
             echo 'addons=[]' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           JSON=$(printf '%s\n' $ADDONS | jq -R . | jq -s -c .)
-          echo "Detected addons: $JSON"
           echo "addons=$JSON" >> "$GITHUB_OUTPUT"
 
   build:
     needs: detect-addons
     if: needs.detect-addons.outputs.addons != '[]'
     runs-on: ubuntu-latest
-
     strategy:
       fail-fast: false
       matrix:
         addon: ${{ fromJson(needs.detect-addons.outputs.addons) }}
-        platform:
-          - linux/amd64
-          - linux/arm64
 
     steps:
       - uses: actions/checkout@v4
@@ -88,34 +79,16 @@ jobs:
         id: version
         shell: bash
         run: |
-          set -euo pipefail
           VERSION=$(yq '.version' "${{ matrix.addon }}/config.yaml")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Select Home Assistant base image
-        id: base
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ "${{ matrix.platform }}" = "linux/amd64" ]; then
-            echo "from=ghcr.io/home-assistant/amd64-base:3.19" >> "$GITHUB_OUTPUT"
-          elif [ "${{ matrix.platform }}" = "linux/arm64" ]; then
-            echo "from=ghcr.io/home-assistant/aarch64-base:3.19" >> "$GITHUB_OUTPUT"
-          else
-            echo "Unsupported platform: ${{ matrix.platform }}"
-            exit 1
-          fi
 
       - name: Build & push addon
         uses: docker/build-push-action@v5
         with:
           context: ./${{ matrix.addon }}
           file: ./${{ matrix.addon }}/Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64
           push: true
-          build-args: |
-            BUILD_FROM=${{ steps.base.outputs.from }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/${{ matrix.addon }}:${{ steps.version.outputs.version }}
             ghcr.io/${{ github.repository_owner }}/${{ matrix.addon }}:latest
