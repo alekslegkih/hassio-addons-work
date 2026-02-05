@@ -26,6 +26,8 @@ devices:
   - /dev/ttyUSB1
   - /dev/fuse
 host_dbus: true
+hassio_api: true
+homeassistant_api: true
 map:
   - backups:ro
   - addon_config:rw
