@@ -9,23 +9,47 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Mapping from string levels to logging constants
+LOG_LEVELS = {
+    "DEBUG": logging.DEBUG,      # 10
+    "INFO": logging.INFO,        # 20  
+    "WARNING": logging.WARNING,  # 30
+    "WARN": logging.WARNING,     # 30 (alias)
+    "ERROR": logging.ERROR,      # 40
+    "CRITICAL": logging.CRITICAL, # 50
+    "FATAL": logging.CRITICAL,   # 50 (alias)
+}
+
 def setup_logging(
-    log_level: int = logging.INFO,
-    log_file: Optional[str] = "/config/addons_config/backup_sync/backup_sync.log"
+    log_level: str = "INFO",
+    log_file: Optional[str] = "/config/backup_sync.log"
 ) -> logging.Logger:
     """
     Setup logging configuration.
     
     Args:
-        log_level: Logging level (DEBUG, INFO, WARNING, ERROR)
+        log_level: Logging level as string (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_file: Path to log file, or None for stdout only
     
     Returns:
         Configured logger instance
+    
+    Raises:
+        ValueError: If log_level is invalid
     """
+    # Convert string level to logging constant
+    level_str_upper = log_level.upper()
+    if level_str_upper not in LOG_LEVELS:
+        valid_levels = ", ".join(sorted(LOG_LEVELS.keys()))
+        raise ValueError(
+            f"Invalid log level: '{log_level}'. Must be one of: {valid_levels}"
+        )
+    
+    numeric_level = LOG_LEVELS[level_str_upper]
+    
     # Create logger
     logger = logging.getLogger("backup_sync")
-    logger.setLevel(log_level)
+    logger.setLevel(numeric_level)
     
     # Clear any existing handlers
     logger.handlers.clear()
@@ -38,7 +62,7 @@ def setup_logging(
     
     # 1. Console handler (for HA Supervisor UI)
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(log_level)
+    console_handler.setLevel(numeric_level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
     
@@ -50,12 +74,13 @@ def setup_logging(
             log_path.parent.mkdir(parents=True, exist_ok=True)
             
             file_handler = logging.FileHandler(log_file, encoding='utf-8')
-            file_handler.setLevel(log_level)
+            file_handler.setLevel(numeric_level)
             file_handler.setFormatter(formatter)
             logger.addHandler(file_handler)
             
             logger.debug(f"File logging enabled: {log_file}")
         except Exception as e:
+            # Use basic logger since file logging failed
             logger.warning(f"Could not setup file logging: {e}")
     
     # Prevent propagation to root logger
