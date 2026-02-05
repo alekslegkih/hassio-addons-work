@@ -2,7 +2,7 @@ ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
 FROM $BUILD_FROM
 
 # Установка зависимостей
-RUN apk add --no-cache python3 py3-pip jq mc && \
+RUN apk add --no-cache python3 py3-pip jq util-linux mc && \
     python3 -m pip install --no-cache-dir watchdog click
 
 # Копируем все файлы

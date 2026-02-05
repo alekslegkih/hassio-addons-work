@@ -1,6 +1,6 @@
 name: "Backup Sync to USB"
 description: "Automatically copies Home Assistant backups to connected USB storage"
-version: "0.1.4"
+version: "0.1.5"
 slug: "backup_sync"
 arch:
   - aarch64
@@ -18,12 +18,8 @@ devices:
   - /dev/sdc
   - /dev/sdd
   - /dev/sde
-  - /dev/sdf
-  - /dev/sdg
-  - /dev/sdh
   - /dev/nvme0n1
   - /dev/nvme1n1
-  - /dev/nvme2n1
   - /dev/mmcblk0
   - /dev/mmcblk1
   - /dev/ttyUSB0
