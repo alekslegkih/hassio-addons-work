@@ -16,7 +16,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 from config.loader import Config
-from notification.ha_notifier import HANotifier
+from notification.notify_sender import NotifySender  # Обновлённый импорт
 from .backup_processor import BackupProcessor
 from .backup_watcher import BackupWatcher
 from .cleanup_manager import CleanupManager
@@ -44,7 +44,7 @@ class BackupOrchestrator:
     def __init__(
         self,
         config: Config,
-        notifier: HANotifier,
+        notifier: NotifySender,  # Обновлённый тип
         source_dir: Path,
         dest_dir: Path
     ):
@@ -113,7 +113,7 @@ class BackupOrchestrator:
             logger.info(f"Monitoring started on {self.source_dir}")
             
             # Send startup notification
-            self.notifier.send_info_notification(
+            self.notifier.send_info(  # Обновлённый метод
                 "Backup Sync Monitoring Started",
                 f"Watching {self.source_dir} for new backups.\n"
                 f"Destination: {self.dest_dir}\n"
@@ -128,7 +128,7 @@ class BackupOrchestrator:
             logger.info("Monitoring interrupted by user")
         except Exception as e:
             logger.error(f"Monitoring error: {e}", exc_info=True)
-            self.notifier.send_error_notification(
+            self.notifier.send_error(  # Обновлённый метод
                 "Monitoring Error",
                 f"Backup monitoring failed: {e}"
             )
@@ -154,7 +154,7 @@ class BackupOrchestrator:
             logger.info("Backup monitoring stopped")
             
             # Send stop notification
-            self.notifier.send_info_notification(
+            self.notifier.send_info(  # Обновлённый метод
                 "Backup Sync Stopped",
                 "Backup monitoring has been stopped."
             )
@@ -217,7 +217,7 @@ class BackupOrchestrator:
             
             # Send summary notification
             if synced_backups:
-                self.notifier.send_info_notification(
+                self.notifier.send_info(  # Обновлённый метод
                     "Existing Backups Synced",
                     f"Successfully synced {len(synced_backups)} backup(s):\n"
                     f"{', '.join(synced_backups[:5])}"
@@ -229,7 +229,7 @@ class BackupOrchestrator:
             
         except Exception as e:
             logger.error(f"Error during sync of existing backups: {e}")
-            self.notifier.send_error_notification(
+            self.notifier.send_error(  # Обновлённый метод
                 "Sync Failed",
                 f"Failed to sync existing backups: {e}"
             )
@@ -331,7 +331,7 @@ class BackupOrchestrator:
             
             if deleted:
                 logger.info(f"Cleaned up {len(deleted)} backup(s)")
-                self.notifier.send_info_notification(
+                self.notifier.send_info(  # Обновлённый метод
                     "Backup Cleanup",
                     f"Cleaned up {len(deleted)} old backup(s)"
                 )
@@ -342,7 +342,7 @@ class BackupOrchestrator:
             
         except Exception as e:
             logger.error(f"Error during forced cleanup: {e}")
-            self.notifier.send_error_notification(
+            self.notifier.send_error(  # Обновлённый метод
                 "Cleanup Failed",
                 f"Failed to clean up old backups: {e}"
             )

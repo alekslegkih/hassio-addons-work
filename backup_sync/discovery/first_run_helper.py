@@ -10,16 +10,16 @@ from typing import List, Optional
 from pathlib import Path
 
 from .disk_scanner import DiskScanner, DiskInfo
-from notification.ha_notifier import HANotifier
+from ..notification.notify_sender import NotifySender  # Обновлённый импорт
 
 logger = logging.getLogger(__name__)
 
 class FirstRunHelper:
     """Helper for first-time setup and disk discovery"""
     
-    def __init__(self, notifier: Optional[HANotifier] = None):
+    def __init__(self, notifier: Optional[NotifySender] = None):  # Обновлён тип
         self.disk_scanner = DiskScanner()
-        self.notifier = notifier or HANotifier()
+        self.notifier = notifier  # Просто сохраняем, не создаём новый
     
     def discover_and_log_disks(self) -> List[DiskInfo]:
         """
@@ -100,14 +100,15 @@ class FirstRunHelper:
         logger.info("Note: The drive should be formatted with a supported")
         logger.info("      filesystem (ext4, NTFS, FAT32, exFAT).")
         
-        # Send error notification
-        try:
-            self.notifier.send_error_notification(
-                "No USB Drive Found",
-                "Please connect a USB drive and restart Backup Sync addon."
-            )
-        except Exception as e:
-            logger.warning(f"Could not send notification: {e}")
+        # Send error notification (если notifier доступен)
+        if self.notifier:
+            try:
+                self.notifier.send_error(  # Обновлённый метод
+                    "No USB Drive Found",
+                    "Please connect a USB drive and restart Backup Sync addon."
+                )
+            except Exception as e:
+                logger.warning(f"Could not send notification: {e}")
     
     def _log_discovered_disks(self, disks: List[DiskInfo]):
         """Log information about discovered disks"""
@@ -156,6 +157,10 @@ class FirstRunHelper:
     
     def _send_discovery_notification(self, disks: List[DiskInfo]):
         """Send notification to user about discovered disks"""
+        if not self.notifier:
+            logger.debug("No notifier available, skipping notification")
+            return
+            
         try:
             # Create message with disk list
             disk_list = []
@@ -170,7 +175,7 @@ class FirstRunHelper:
             disk_list_str = "\n".join(disk_list)
             
             # Send notification
-            self.notifier.send_info_notification(
+            self.notifier.send_info(  # Обновлённый метод
                 "Backup Sync: USB Disks Found",
                 f"Found {len(disks)} USB disk(s).\n\n"
                 f"Available disks:\n{disk_list_str}\n\n"
@@ -180,7 +185,7 @@ class FirstRunHelper:
                 f"3. Save and restart addon"
             )
             
-            logger.info("Notification sent to Home Assistant")
+            logger.info("Notification sent via notify service")
             
         except Exception as e:
             logger.warning(f"Could not send discovery notification: {e}")

@@ -1,6 +1,6 @@
 name: "Backup Sync to USB"
 description: "Automatically copies Home Assistant backups to connected USB storage"
-version: "0.1.8"
+version: "0.1.9"
 slug: "backup_sync"
 arch:
   - aarch64
@@ -40,7 +40,7 @@ options:
   sync_existing_on_start: true
   max_retries: 3
   retry_delay: 30
-  notify_service: canel_message
+  notify_service: notification_channel
 schema:
   log_level: list(OFF|DEBUG|INFO|WARNING|ERROR|CRITICAL) 
   usb_device: "str"

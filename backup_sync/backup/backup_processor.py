@@ -14,7 +14,7 @@ from typing import Optional, Tuple, Callable
 from datetime import datetime
 
 from config.loader import Config
-from notification.ha_notifier import HANotifier
+from notification.notify_sender import NotifySender  # Обновлённый импорт
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ class BackupProcessor:
     def __init__(
         self,
         config: Config,
-        notifier: HANotifier,
+        notifier: NotifySender,  # Обновлённый тип
         source_dir: Path,
         dest_dir: Path
     ):
@@ -309,7 +309,7 @@ class BackupProcessor:
     def _notify_backup_started(self, backup_name: str) -> None:
         """Send notification about backup start"""
         try:
-            self.notifier.send_info_notification(
+            self.notifier.send_info(  # Обновлённый метод
                 "Backup Copy Started",
                 f"Starting to copy backup: {backup_name}"
             )
@@ -333,7 +333,7 @@ class BackupProcessor:
         
         # Send success notification
         try:
-            self.notifier.send_info_notification(
+            self.notifier.send_info(  # Обновлённый метод
                 "Backup Copied Successfully",
                 f"Backup copied: {result.source_path.name}\n"
                 f"Size: {result.source_size / (1024**2):.1f} MB\n"
@@ -352,7 +352,7 @@ class BackupProcessor:
         
         # Send error notification
         try:
-            self.notifier.send_error_notification(
+            self.notifier.send_error(  # Обновлённый метод
                 "Backup Copy Failed",
                 f"Failed to copy backup: {result.source_path.name}\n"
                 f"Error: {result.error}\n"

@@ -108,6 +108,6 @@ def get_logger(name: str = "backup_sync") -> logging.Logger:
     return logging.getLogger(name)
 
 # Example usage in other modules:
-# from utils.logger import get_logger
+# from core.logger import get_logger
 # logger = get_logger(__name__)
 # logger.info("Module started")

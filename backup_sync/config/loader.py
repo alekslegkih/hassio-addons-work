@@ -35,7 +35,7 @@ class ConfigLoader:
         "max_retries": 3,
         "retry_delay": 30,
         "log_level": "INFO",
-        "notify_service": "canel_message"
+        "notify_service": "notification_channel"
     }
     
     @staticmethod
@@ -99,7 +99,7 @@ class ConfigLoader:
                 max_retries=int(config_dict.get("max_retries", 3)),
                 retry_delay=int(config_dict.get("retry_delay", 30)),
                 log_level=str(config_dict.get("log_level", "INFO")),
-                notify_service=str(config_dict.get("notify_service", "canel_message"))
+                notify_service=str(config_dict.get("notify_service", "notification_channel"))
             )
             
             # Additional validation

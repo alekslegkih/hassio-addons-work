@@ -2,6 +2,6 @@
 Notification module for Home Assistant integration.
 """
 
-from .ha_notifier import HANotifier, Notification
+from .notify_sender import NotifySender, Notification
 
-__all__ = ["HANotifier", "Notification"]
+__all__ = ["NotifySender", "Notification"]

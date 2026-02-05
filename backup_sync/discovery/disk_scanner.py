@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
-from utils.shell_executor import run_command
+from core.shell_executor import run_command
 
 logger = logging.getLogger(__name__)
 

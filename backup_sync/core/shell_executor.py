@@ -8,7 +8,10 @@ import subprocess
 import logging
 from typing import Tuple, Optional, List
 
-logger = logging.getLogger(__name__)
+# Получаем логгер через get_logger для согласованности
+from .logger import get_logger  # ✅ ДОБАВЛЕНО для согласованности
+
+logger = get_logger(__name__)  # ✅ ИСПРАВЛЕНО для согласованности
 
 def run_command(
     command: List[str],

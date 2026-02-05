@@ -16,30 +16,40 @@ from discovery.first_run_helper import FirstRunHelper
 from storage.disk_mounter import DiskMounter
 from storage.storage_validator import StorageValidator
 from backup.backup_orchestrator import BackupOrchestrator
-from notification.ha_notifier import HANotifier
-from utils.logger import setup_logging
+from notification.notify_sender import NotifySender
+from core.logger import setup_logging
 
 def main():
     """Main entry point for the Backup Sync addon"""
     
-    # 1. Setup logging
-    logger = setup_logging()
+    # 1. First load configuration (needed for log level)
+    try:
+        config = ConfigLoader.load()
+    except Exception as e:
+        # Basic logging if config fails
+        print(f"CRITICAL: Failed to load configuration: {e}")
+        sys.exit(1)
+    
+    # 2. Setup logging with config level
+    logger = setup_logging(log_level=config.log_level)
     logger.info("=" * 60)
     logger.info("Starting Backup Sync addon")
     logger.info("=" * 60)
     
+    # 3. Initialize notify sender with config
+    notifier = NotifySender(notify_service=config.notify_service)
+    
     try:
-        # 2. Load configuration
-        logger.info("Loading configuration...")
-        config = ConfigLoader.load()
+        logger.info(f"Configuration loaded. Log level: {config.log_level}")
         logger.info(f"USB device configured: {config.usb_device or 'Not set (first run)'}")
         logger.info(f"Max copies to keep: {config.max_copies}")
         logger.info(f"Wait time: {config.wait_time}s")
+        logger.info(f"Notify service: {config.notify_service}")
         
-        # 3. First run check - if no USB device configured
+        # 4. First run check - if no USB device configured
         if not config.usb_device:
             logger.info("First run detected - no USB device configured")
-            helper = FirstRunHelper()
+            helper = FirstRunHelper(notifier=notifier)  # Передаём notifier
             available_disks = helper.discover_and_log_disks()
             
             if not available_disks:
@@ -48,9 +58,6 @@ def main():
                 
             # Will exit here, waiting for user to configure the addon
             sys.exit(0)
-        
-        # 4. Initialize HA notifier (for error notifications)
-        notifier = HANotifier()
         
         # 5. Mount USB device
         logger.info(f"Mounting USB device: {config.usb_device}")
@@ -63,7 +70,7 @@ def main():
         if not mount_result.success:
             error_msg = f"Failed to mount {config.usb_device}: {mount_result.error}"
             logger.error(error_msg)
-            notifier.send_error_notification("Mount failed", error_msg)
+            notifier.send_error("Mount failed", error_msg)
             sys.exit(1)
         
         logger.info(f"Successfully mounted {config.usb_device} to /media/backups")
@@ -76,7 +83,7 @@ def main():
         if not validator.is_storage_available(storage_path):
             error_msg = "Storage validation failed"
             logger.error(error_msg)
-            notifier.send_error_notification("Storage error", error_msg)
+            notifier.send_error("Storage error", error_msg)
             sys.exit(1)
         
         # Get storage info
@@ -109,7 +116,7 @@ def main():
         logger.info("=" * 60)
         
         # Send startup notification
-        notifier.send_info_notification(
+        notifier.send_info(
             "Backup Sync Started",
             f"Monitoring /backup for new backups. Destination: /media/backups"
         )
@@ -126,7 +133,7 @@ def main():
         logger.error(f"Unexpected error in main: {e}", exc_info=True)
         # Try to send error notification
         try:
-            notifier.send_error_notification("Fatal error", str(e))
+            notifier.send_error("Fatal error", str(e))
         except:
             pass
         sys.exit(1)
