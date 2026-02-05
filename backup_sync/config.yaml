@@ -42,7 +42,7 @@ options:
   retry_delay: 30
   notify_service: canel_message
 schema:
-  log_level: list(DEBUG|INFO|WARNING|ERROR|CRITICAL) 
+  log_level: list(OFF|DEBUG|INFO|WARNING|ERROR|CRITICAL) 
   usb_device: "str"
   max_copies: "int"
   wait_time: "int"

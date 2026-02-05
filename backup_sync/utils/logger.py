@@ -11,13 +11,14 @@ from typing import Optional
 
 # Mapping from string levels to logging constants
 LOG_LEVELS = {
-    "DEBUG": logging.DEBUG,      # 10
-    "INFO": logging.INFO,        # 20  
-    "WARNING": logging.WARNING,  # 30
-    "WARN": logging.WARNING,     # 30 (alias)
-    "ERROR": logging.ERROR,      # 40
-    "CRITICAL": logging.CRITICAL, # 50
-    "FATAL": logging.CRITICAL,   # 50 (alias)
+    "OFF": logging.CRITICAL + 10,    # Higher than CRITICAL = disable all
+    "DEBUG": logging.DEBUG,          # 10
+    "INFO": logging.INFO,            # 20  
+    "WARNING": logging.WARNING,      # 30
+    "WARN": logging.WARNING,         # 30 (alias)
+    "ERROR": logging.ERROR,          # 40
+    "CRITICAL": logging.CRITICAL,    # 50
+    "FATAL": logging.CRITICAL,       # 50 (alias)
 }
 
 def setup_logging(
@@ -28,7 +29,7 @@ def setup_logging(
     Setup logging configuration.
     
     Args:
-        log_level: Logging level as string (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        log_level: Logging level as string (OFF, DEBUG, INFO, WARNING, ERROR)
         log_file: Path to log file, or None for stdout only
     
     Returns:
@@ -51,7 +52,13 @@ def setup_logging(
     logger = logging.getLogger("backup_sync")
     logger.setLevel(numeric_level)
     
-    # Clear any existing handlers
+    # For OFF level, we can return early with just the logger
+    # No handlers needed since nothing will be logged anyway
+    if level_str_upper == "OFF":
+        logger.propagate = False
+        return logger
+    
+    # Clear any existing handlers (except for OFF level)
     logger.handlers.clear()
     
     # Create formatter

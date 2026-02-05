@@ -21,6 +21,8 @@ class Config:
     sync_existing_on_start: bool      # Sync existing backups on startup
     max_retries: int                  # Maximum retry attempts
     retry_delay: int                  # Delay between retries (seconds)
+    log_level: str                    # Logging level: DEBUG, INFO, WARNING, ERROR
+    notify_service: str               # Notification service channel
 
 class ConfigLoader:
     """Loads and validates configuration from options.json"""
@@ -31,7 +33,9 @@ class ConfigLoader:
         "wait_time": 300,
         "sync_existing_on_start": True,
         "max_retries": 3,
-        "retry_delay": 30
+        "retry_delay": 30,
+        "log_level": "INFO",
+        "notify_service": "canel_message"
     }
     
     @staticmethod
@@ -77,6 +81,8 @@ class ConfigLoader:
         logger.info(f"  Sync existing: {config.sync_existing_on_start}")
         logger.info(f"  Max retries: {config.max_retries}")
         logger.info(f"  Retry delay: {config.retry_delay}s")
+        logger.info(f"  Log level: {config.log_level}")
+        logger.info(f"  Notify service: {config.notify_service}")
         
         return config
     
@@ -91,7 +97,9 @@ class ConfigLoader:
                 wait_time=int(config_dict.get("wait_time", 300)),
                 sync_existing_on_start=bool(config_dict.get("sync_existing_on_start", True)),
                 max_retries=int(config_dict.get("max_retries", 3)),
-                retry_delay=int(config_dict.get("retry_delay", 30))
+                retry_delay=int(config_dict.get("retry_delay", 30)),
+                log_level=str(config_dict.get("log_level", "INFO")),
+                notify_service=str(config_dict.get("notify_service", "canel_message"))
             )
             
             # Additional validation
@@ -125,6 +133,10 @@ class ConfigLoader:
         
         if config.retry_delay < 0:
             errors.append(f"retry_delay must be >= 0, got {config.retry_delay}")
+        
+        valid_log_levels = ["OFF", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]  # Добавить OFF
+        if config.log_level.upper() not in valid_log_levels:
+            errors.append(f"log_level must be one of {valid_log_levels}, got {config.log_level}")
         
         if errors:
             error_msg = "; ".join(errors)
