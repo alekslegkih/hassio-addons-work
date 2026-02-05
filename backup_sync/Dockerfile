@@ -1,26 +1,24 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/home-assistant:stable
-FROM $BUILD_FROM
+ARG BUILD_FROM=ghcr.io/home-assistant/base:stable
+FROM ${BUILD_FROM}
 
-# Установка зависимостей
-RUN apk add --no-cache python3 py3-pip jq util-linux mc && \
-    python3 -m pip install --no-cache-dir watchdog click
+WORKDIR /usr/local/bin/backup_sync
 
-# Копируем все файлы
-COPY . /usr/local/bin/backup_sync/
+RUN apk add --no-cache \
+        python3 \
+        py3-pip \
+        jq \
+        util-linux \
+        mc \
+    && pip3 install --no-cache-dir \
+        watchdog \
+        click
 
-# Создаем символическую ссылку для команды backup-sync
-RUN ln -sf /usr/local/bin/backup_sync/api/cli.py /usr/local/bin/backup-sync && \
-    chmod +x /usr/local/bin/backup-sync && \
-    chmod +x /usr/local/bin/backup_sync/api/cli.py
+COPY . .
 
-# Делаем основной скрипт исполняемым
-RUN chmod a+x /usr/local/bin/backup_sync/main.py
+RUN chmod +x main.py api/cli.py \
+    && ln -sf /usr/local/bin/backup_sync/api/cli.py /usr/local/bin/backup-sync
 
-# Запускающий скрипт
 COPY run.sh /run.sh
-RUN chmod a+x /run.sh
+RUN chmod +x /run.sh
 
-# Два варианта запуска:
-# 1. Для работы аддона (основной режим)
-# 2. Для CLI команд (через backup-sync)
-CMD [ "/run.sh" ]
+CMD ["/run.sh"]
