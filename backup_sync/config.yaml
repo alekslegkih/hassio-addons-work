@@ -1,25 +1,34 @@
-name: "Backup Sync to RAID"
-description: "Automatically sync backups from system drive to external RAID array"
-version: "0.0.4"
+name: "Backup Sync to USB"
+description: "Automatically copies Home Assistant backups to connected USB storage"
+version: "0.1.0"
 slug: "backup_sync"
-url: "https://github.com/alekslegkih/hassio-addons-work"
 arch:
   - aarch64
   - amd64
 image: "ghcr.io/alekslegkih/backup_sync"
-startup: "application"
-boot: "auto"
+startup: application
+boot: auto
+url: "https://github.com/alekslegkih/hassio-addons-work"
+privileged:
+  - SYS_ADMIN
+  - DAC_READ_SEARCH
+devices: true
+host_dbus: true
 map:
-  - backup:rw
-  - media:rw
+  - backups:ro
   - addon_config:rw
+  - media:rw
 options:
-  dest_dir: "/media/Backup"
+  usb_device: ""
   max_copies: 5
   wait_time: 300
   sync_existing_on_start: true
+  max_retries: 3
+  retry_delay: 30
 schema:
-  dest_dir: "str"
+  usb_device: "str"
   max_copies: "int"
   wait_time: "int"
   sync_existing_on_start: "bool"
+  max_retries: "int"
+  retry_delay: "int"
