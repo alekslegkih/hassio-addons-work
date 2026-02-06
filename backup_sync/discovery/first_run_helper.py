@@ -12,8 +12,8 @@ from pathlib import Path
 from discovery.disk_scanner import DiskScanner, DiskInfo
 
 from core.logger import get_logger
-logger = get_logger()
-
+# logger = get_logger()
+logger = logging.getLogger(__name__)
 
 class FirstRunHelper:
     """Helper for first-time setup and disk discovery"""

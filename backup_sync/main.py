@@ -24,6 +24,8 @@ from notification.notify_sender import NotifySender
 
 logger = logging.getLogger(__name__)
 
+logger.info("Это модуль маин")
+
 def main():
     """Main entry point for the Backup Sync addon"""
     
