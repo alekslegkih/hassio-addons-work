@@ -57,15 +57,15 @@ class ConfigLoader:
         config_file = Path(config_path)
         
         if not config_file.exists():
-            logger.warning(f"Config file not found at {config_path}, using defaults")
+            print(f"[WARNING]Config file not found at {config_path}, using defaults")
             user_config = {}
         else:
             try:
                 with open(config_file, 'r') as f:
                     user_config = json.load(f)
-                logger.info(f"Loaded config from {config_path}")
+                print(f"[INFO]Loaded config from {config_path}")
             except json.JSONDecodeError as e:
-                logger.error(f"Invalid JSON in config file: {e}")
+                print(f"[ERROR] Invalid JSON in config file: {e}")
                 raise
         
         # Merge defaults with user config
