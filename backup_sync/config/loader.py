@@ -13,6 +13,9 @@ from typing import Optional, Any
 # Import our modules
 from core.logger import setup_logging
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass
 class Config:
     """Main configuration for Backup Sync addon"""
@@ -76,9 +79,8 @@ class ConfigLoader:
         config = ConfigLoader._create_config(config_dict)
 
         # Setup logging with config level
-        logger = setup_logging(log_level=config.log_level)
+        setup_logging(log_level=config.log_level)
         logger.info("=" * 60)
-        logger.info("'%(asctime)s', datefmt='%Y-%m-%d %H:%M:%S'")
         logger.info("Starting Backup Sync addon")
         logger.info("=" * 60)
         

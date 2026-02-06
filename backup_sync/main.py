@@ -14,13 +14,13 @@ import logging
 
 # Import our modules
 from config.loader import ConfigLoader
-from discovery.disk_scanner import DiskScanner
+from core.logger import setup_logging
 from discovery.first_run_helper import FirstRunHelper
+from discovery.disk_scanner import DiskScanner
 from storage.disk_mounter import DiskMounter
 from storage.storage_validator import StorageValidator
 from backup.backup_orchestrator import BackupOrchestrator
 from notification.notify_sender import NotifySender
-from core.logger import setup_logging
 
 logger = logging.getLogger(__name__)
 
@@ -36,18 +36,12 @@ def main():
         sys.exit(1)
     
     # 2. Setup logging with config level
-    # Moving loader.py
+    # Moving to loader.py
     
     # 3. Initialize notify sender with config
     notifier = NotifySender(notify_service=config.notify_service)
     
-    try:
-        logger.info(f"Configuration loaded. Log level: {config.log_level}")
-        logger.info(f"USB device configured: {config.usb_device or 'Not set (first run)'}")
-        logger.info(f"Max copies to keep: {config.max_copies}")
-        logger.info(f"Wait time: {config.wait_time}s")
-        logger.info(f"Notify service: {config.notify_service}")
-        
+    try:      
         # 4. First run check - if no USB device configured
         if not config.usb_device:
             logger.info("First run detected - no USB device configured")

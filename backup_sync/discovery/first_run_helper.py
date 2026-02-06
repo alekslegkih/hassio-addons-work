@@ -88,12 +88,10 @@ class FirstRunHelper:
         """Handle case when no USB disks are found"""
         logger.error("No USB disks found!")
         logger.info("Please connect a USB drive and restart the addon.")
-        logger.info("")
         logger.info("Supported drives:")
         logger.info("  - USB flash drives")
         logger.info("  - USB external hard drives")
         logger.info("  - SD cards (via USB adapter)")
-        logger.info("")
         logger.info("Note: The drive should be formatted with a supported")
         logger.info("      filesystem (ext4, NTFS, FAT32, exFAT).")
     
@@ -164,22 +162,18 @@ class FirstRunHelper:
         logger.info("CONFIGURATION INSTRUCTIONS:")
         logger.info("=" * 60)
         logger.info("To configure Backup Sync:")
-        logger.info("")
         logger.info("1. Open the Backup Sync addon in Home Assistant")
         logger.info("2. Click on 'Configuration' tab")
         logger.info("3. Look for 'USB Disk Partition' field")
         logger.info("4. Enter one of the device names from above")
-        logger.info("")
         
         # Show example based on available disks
         if disks:
             example_disk = disks[0].name
             logger.info(f"Example: Enter '{example_disk}'")
-            logger.info("")
         
         logger.info("5. Click 'SAVE' at the bottom")
         logger.info("6. Restart the addon")
-        logger.info("")
         logger.info("The addon will now exit. Please configure it and restart.")
         logger.info("=" * 60)
         
