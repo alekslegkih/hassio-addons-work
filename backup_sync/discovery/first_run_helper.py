@@ -10,7 +10,7 @@ from typing import List, Optional
 from pathlib import Path
 
 from discovery.disk_scanner import DiskScanner, DiskInfo
-from ..notification.notify_sender import NotifySender  
+from notification.notify_sender import NotifySender  
 
 logger = logging.getLogger(__name__)
 
