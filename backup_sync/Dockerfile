@@ -6,26 +6,29 @@ WORKDIR /usr/local/bin/backup_sync
 
 # Системные зависимости
 RUN apk add --no-cache \
-    jq \
+    bash \
+    coreutils \
     util-linux \
-    mc
+    lsblk \
+    blkid \
+    jq \
+    python3 \
+    py3-pip
 
-# Python зависимости
+# Python зависимости (watchdog + уведомления)
 RUN python3 -m pip install --no-cache-dir \
     watchdog \
-    click
+    requests
 
 # Копируем код аддона
 COPY . .
 
-# CLI команда
-RUN ln -sf /usr/local/bin/backup_sync/api/cli.py /usr/local/bin/backup-sync \
-    && chmod +x /usr/local/bin/backup-sync \
-    && chmod +x api/cli.py \
-    && chmod +x main.py
+# Права на скрипты
+RUN chmod +x \
+    /usr/local/bin/backup_sync/run.sh \
+    /usr/local/bin/backup_sync/core/*.sh \
+    /usr/local/bin/backup_sync/storage/*.sh \
+    /usr/local/bin/backup_sync/sync/*.sh
 
-# Entry point для HA
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-
-CMD ["/run.sh"]
+# Entry point для Home Assistant
+CMD ["/usr/local/bin/backup_sync/run.sh"]
