@@ -78,6 +78,7 @@ class ConfigLoader:
         # Setup logging with config level
         logger = setup_logging(log_level=config.log_level)
         logger.info("=" * 60)
+        logger.info("'%(asctime)s', datefmt='%Y-%m-%d %H:%M:%S'")
         logger.info("Starting Backup Sync addon")
         logger.info("=" * 60)
         

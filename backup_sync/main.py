@@ -9,8 +9,8 @@ import time
 from pathlib import Path
 import logging
 
-import os
-print(f"[BOOT] PID={os.getpid()}")
+# import os
+# print(f"[BOOT] PID={os.getpid()}")
 
 # Import our modules
 from config.loader import ConfigLoader
