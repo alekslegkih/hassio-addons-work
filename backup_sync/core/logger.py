@@ -93,6 +93,9 @@ def setup_logging(
     
     # Prevent propagation to root logger
     logger.propagate = True
+
+    # Ensure all child loggers inherit level
+    logging.getLogger().setLevel(level)
   
     return logger
 
