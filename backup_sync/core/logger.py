@@ -55,7 +55,7 @@ def setup_logging(
     # For OFF level, we can return early with just the logger
     # No handlers needed since nothing will be logged anyway
     if level_str_upper == "OFF":
-        logger.propagate = False
+        logger.propagate = True
         return logger
     
     # Clear any existing handlers (except for OFF level)
