@@ -49,7 +49,7 @@ def main():
         # 4. First run check - if no USB device configured
         if not config.usb_device:
             logger.info("First run detected - no USB device configured")
-            helper = FirstRunHelper() 
+            helper = FirstRunHelper(notifier=notifier) 
             available_disks = helper.discover_and_log_disks()
             
             if not available_disks:
