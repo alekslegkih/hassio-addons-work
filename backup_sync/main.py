@@ -5,9 +5,14 @@ Coordinates all components: disk discovery, mounting, monitoring, and backup pro
 """
 
 import sys
-import logging
 import time
 from pathlib import Path
+
+import logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+)
 
 # Import our modules
 from config.loader import ConfigLoader
