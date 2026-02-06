@@ -99,6 +99,7 @@ def setup_logging(
   
     return logger
 
+
 def get_logger(name: str = "backup_sync") -> logging.Logger:
     """
     Get a logger instance with the given name.
