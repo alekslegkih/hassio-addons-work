@@ -10,7 +10,7 @@ from pathlib import Path
 import logging
 
 logging.basicConfig(
-    level=logging.OFF,
+    level=logging.FATAL,
     format="%(message)s",
 )
 
