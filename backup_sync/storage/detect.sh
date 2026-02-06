@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Фильтры системных дисков
-SYSTEM_DISKS_REGEX="^(sda|mmcblk0|zram)"
+SYSTEM_DISKS_REGEX="^(sda|mmcblk0|zram)"    
 
 detect_devices() {
 
