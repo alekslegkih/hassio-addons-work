@@ -9,7 +9,6 @@ from typing import List, Optional
 from pathlib import Path
 
 from discovery.disk_scanner import DiskScanner, DiskInfo
-from notification.notify_sender import NotifySender
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +32,6 @@ class FirstRunHelper:
             return []
 
         self._log_discovered_disks(usb_disks)
-        self._send_discovery_notification(usb_disks)
         self._log_configuration_instructions(usb_disks)
 
         return usb_disks
@@ -58,15 +56,6 @@ class FirstRunHelper:
         logger.error("No USB disks found!")
         logger.info("Please connect a USB drive and restart the addon.")
 
-        if self.notifier:
-            try:
-                self.notifier.send_error(
-                    "No USB Drive Found",
-                    "Please connect a USB drive and restart Backup Sync addon."
-                )
-            except Exception as e:
-                logger.warning(f"Could not send notification: {e}")
-
     def _log_discovered_disks(self, disks: List[DiskInfo]):
         logger.info(f"Found {len(disks)} USB device(s):")
 
@@ -83,27 +72,6 @@ class FirstRunHelper:
 
             if disk.is_partition:
                 logger.info(f"   Partition of: {disk.parent_disk}")
-
-    def _send_discovery_notification(self, disks: List[DiskInfo]):
-        if not self.notifier:
-            return
-
-        try:
-            lines = []
-            for disk in disks[:5]:
-                size = f"{disk.size_gb:.0f}GB" if disk.size_gb >= 1 else "<1GB"
-                fs = disk.filesystem or "Unknown"
-                lines.append(f"- {disk.name}: {size}, {fs}")
-
-            message = "\n".join(lines)
-
-            self.notifier.send_info(
-                "Backup Sync: USB Disks Found",
-                f"Found {len(disks)} USB disk(s):\n\n{message}\n\n"
-                "Please configure the addon and restart."
-            )
-        except Exception as e:
-            logger.warning(f"Notification failed: {e}")
 
     def _log_configuration_instructions(self, disks: List[DiskInfo]):
         logger.info("=" * 60)
