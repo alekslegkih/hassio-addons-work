@@ -16,9 +16,8 @@ logger = logging.getLogger(__name__)
 class FirstRunHelper:
     """Helper for first-time setup and disk discovery"""
 
-    def __init__(self, notifier: Optional[NotifySender] = None):
+    def __init__(self):
         self.disk_scanner = DiskScanner()
-        self.notifier = notifier
 
     def discover_and_log_disks(self) -> List[DiskInfo]:
         logger.info("=" * 60)
