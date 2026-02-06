@@ -10,7 +10,8 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional, Any
 
-logger = logging.getLogger(__name__)
+# Import our modules
+from core.logger import setup_logging
 
 @dataclass
 class Config:
@@ -73,6 +74,12 @@ class ConfigLoader:
         
         # Validate and convert to Config object
         config = ConfigLoader._create_config(config_dict)
+
+        # Setup logging with config level
+        logger = setup_logging(log_level=config.log_level)
+        logger.info("=" * 60)
+        logger.info("Starting Backup Sync addon")
+        logger.info("=" * 60)
         
         # Log configuration (without sensitive info)
         logger.info(f"Configuration loaded: USB device='{config.usb_device}'")

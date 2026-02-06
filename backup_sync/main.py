@@ -9,11 +9,6 @@ import time
 from pathlib import Path
 import logging
 
-logging.basicConfig(
-    level=logging.FATAL,
-    format="%(message)s",
-)
-
 # Import our modules
 from config.loader import ConfigLoader
 from discovery.disk_scanner import DiskScanner
@@ -23,6 +18,8 @@ from storage.storage_validator import StorageValidator
 from backup.backup_orchestrator import BackupOrchestrator
 from notification.notify_sender import NotifySender
 from core.logger import setup_logging
+
+logger = logging.getLogger(__name__)
 
 def main():
     """Main entry point for the Backup Sync addon"""
@@ -36,10 +33,7 @@ def main():
         sys.exit(1)
     
     # 2. Setup logging with config level
-    logger = setup_logging(log_level=config.log_level)
-    logger.info("=" * 60)
-    logger.info("Starting Backup Sync addon")
-    logger.info("=" * 60)
+    # Moving loader.py
     
     # 3. Initialize notify sender with config
     notifier = NotifySender(notify_service=config.notify_service)
