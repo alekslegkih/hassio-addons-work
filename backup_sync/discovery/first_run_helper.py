@@ -153,17 +153,6 @@ class FirstRunHelper:
             
             disk_list_str = "\n".join(disk_list)
             
-            # Send notification
-            self.notifier.send_info(  # Обновлённый метод
-                "Backup Sync: USB Disks Found",
-                f"Found {len(disks)} USB disk(s).\n\n"
-                f"Available disks:\n{disk_list_str}\n\n"
-                f"Please configure the addon:\n"
-                f"1. Open Backup Sync addon settings\n"
-                f"2. Enter device name (e.g., sdb1)\n"
-                f"3. Save and restart addon"
-            )
-            
             logger.info("Notification sent via notify service")
             
         except Exception as e:
