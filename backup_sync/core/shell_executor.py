@@ -9,9 +9,9 @@ import logging
 from typing import Tuple, Optional, List
 
 # Получаем логгер через get_logger для согласованности
-from .logger import get_logger  # ✅ ДОБАВЛЕНО для согласованности
+from core.logger import get_logger
 
-logger = get_logger(__name__)  # ✅ ИСПРАВЛЕНО для согласованности
+logger = get_logger(__name__)
 
 def run_command(
     command: List[str],

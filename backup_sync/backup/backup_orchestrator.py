@@ -17,9 +17,9 @@ from watchdog.events import FileSystemEventHandler
 
 from config.loader import Config
 from notification.notify_sender import NotifySender  # Обновлённый импорт
-from .backup_processor import BackupProcessor
-from .backup_watcher import BackupWatcher
-from .cleanup_manager import CleanupManager
+from backup.backup_processor import BackupProcessor
+from backup.backup_watcher import BackupWatcher
+from backup.cleanup_manager import CleanupManager
 
 logger = logging.getLogger(__name__)
 
