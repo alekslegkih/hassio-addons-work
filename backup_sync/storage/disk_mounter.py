@@ -30,10 +30,10 @@ class DiskMounter:
     DEFAULT_MOUNT_POINT = Path("/media/backups")
     DEFAULT_MOUNT_OPTIONS = "defaults,nofail"
     
-    def __init__(self, mount_point: Optional[Path] = None):
-        self.mount_point = mount_point or self.DEFAULT_MOUNT_POINT
+    def __init__(self, mount_point: Path = DEFAULT_MOUNT_POINT):
+        self.mount_point = mount_point
     
-    def mount_usb_device(self, device: str, filesystem: Optional[str] = None) -> MountResult:
+    def mount(self, device: str, filesystem: Optional[str] = None) -> MountResult:
         """
         Mount USB device to mount point.
         

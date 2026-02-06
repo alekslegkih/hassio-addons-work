@@ -154,9 +154,7 @@ class FirstRunHelper:
                 disk_list.append(f"... and {len(disks) - 5} more")
             
             disk_list_str = "\n".join(disk_list)
-            
-            logger.info("Notification sent via notify service")
-            
+                      
         except Exception as e:
             logger.warning(f"Could not send discovery notification: {e}")
     
@@ -165,7 +163,6 @@ class FirstRunHelper:
         logger.info("=" * 60)
         logger.info("CONFIGURATION INSTRUCTIONS:")
         logger.info("=" * 60)
-        logger.info("")
         logger.info("To configure Backup Sync:")
         logger.info("")
         logger.info("1. Open the Backup Sync addon in Home Assistant")
@@ -177,7 +174,7 @@ class FirstRunHelper:
         # Show example based on available disks
         if disks:
             example_disk = disks[0].name
-            logger.info(f"   Example: Enter '{example_disk}'")
+            logger.info(f"Example: Enter '{example_disk}'")
             logger.info("")
         
         logger.info("5. Click 'SAVE' at the bottom")
@@ -191,7 +188,6 @@ class FirstRunHelper:
         if suggested:
             logger.info(f"")
             logger.info(f"SUGGESTION: Use '{suggested}' for best results")
-            logger.info(f"")
     
     def validate_device_choice(self, device_name: str) -> bool:
         """

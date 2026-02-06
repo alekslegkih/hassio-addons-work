@@ -9,6 +9,9 @@ import time
 from pathlib import Path
 import logging
 
+import os
+print(f"[BOOT] PID={os.getpid()}")
+
 # Import our modules
 from config.loader import ConfigLoader
 from discovery.disk_scanner import DiskScanner
@@ -61,10 +64,7 @@ def main():
         # 5. Mount USB device
         logger.info(f"Mounting USB device: {config.usb_device}")
         mounter = DiskMounter()
-        mount_result = mounter.mount_usb_device(
-            device=config.usb_device,
-            mount_point="/media/backups"
-        )
+        mount_result = mounter.mount(config.usb_device)
         
         if not mount_result.success:
             error_msg = f"Failed to mount {config.usb_device}: {mount_result.error}"
