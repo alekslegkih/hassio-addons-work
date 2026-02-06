@@ -92,8 +92,8 @@ def setup_logging(
             logger.warning(f"Could not setup file logging: {e}")
     
     # Prevent propagation to root logger
-    logger.propagate = False
-    
+    logger.propagate = True
+  
     return logger
 
 def get_logger(name: str = "backup_sync") -> logging.Logger:
