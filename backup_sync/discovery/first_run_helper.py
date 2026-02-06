@@ -10,17 +10,15 @@ from typing import List, Optional
 from pathlib import Path
 
 from discovery.disk_scanner import DiskScanner, DiskInfo
-from notification.notify_sender import NotifySender  
 
 logger = logging.getLogger(__name__)
 
 class FirstRunHelper:
     """Helper for first-time setup and disk discovery"""
     
-    def __init__(self, notifier: Optional[NotifySender] = None):  # Обновлён тип
+    def __init__(self):
         self.disk_scanner = DiskScanner()
-        self.notifier = notifier  # Просто сохраняем, не создаём новый
-    
+
     def discover_and_log_disks(self) -> List[DiskInfo]:
         """
         Discover USB disks and log information for user.
@@ -41,9 +39,6 @@ class FirstRunHelper:
         
         # Log discovered disks
         self._log_discovered_disks(usb_disks)
-        
-        # Send notification to user
-        self._send_discovery_notification(usb_disks)
         
         # Log instructions
         self._log_configuration_instructions(usb_disks)
@@ -99,16 +94,6 @@ class FirstRunHelper:
         logger.info("")
         logger.info("Note: The drive should be formatted with a supported")
         logger.info("      filesystem (ext4, NTFS, FAT32, exFAT).")
-        
-        # Send error notification (если notifier доступен)
-        if self.notifier:
-            try:
-                self.notifier.send_error(  # Обновлённый метод
-                    "No USB Drive Found",
-                    "Please connect a USB drive and restart Backup Sync addon."
-                )
-            except Exception as e:
-                logger.warning(f"Could not send notification: {e}")
     
     def _log_discovered_disks(self, disks: List[DiskInfo]):
         """Log information about discovered disks"""
@@ -154,13 +139,7 @@ class FirstRunHelper:
                 logger.info(f"   Partition of: {disk.parent_disk}")
             
             logger.info("")
-    
-    def _send_discovery_notification(self, disks: List[DiskInfo]):
-        """Send notification to user about discovered disks"""
-        if not self.notifier:
-            logger.debug("No notifier available, skipping notification")
-            return
-            
+               
         try:
             # Create message with disk list
             disk_list = []
