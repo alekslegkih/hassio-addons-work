@@ -55,7 +55,7 @@ def setup_logging(
     # For OFF level, we can return early with just the logger
     # No handlers needed since nothing will be logged anyway
     if level_str_upper == "OFF":
-        logger.propagate = True
+        logger.propagate = False
         return logger
     
     # Clear any existing handlers (except for OFF level)
@@ -92,7 +92,7 @@ def setup_logging(
             logger.warning(f"Could not setup file logging: {e}")
     
     # Prevent propagation to root logger
-    logger.propagate = True
+    logger.propagate = False
 
     return logger
 
