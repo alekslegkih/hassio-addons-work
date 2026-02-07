@@ -1,63 +1,48 @@
 #!/usr/bin/env bash
 
 check_storage() {
-  local src="/backup"
-  local device="/dev/${USB_DEVICE}"
-  local target="/media/${MOUNT_POINT}"
-
   log_info "Running storage checks"
 
-  # 1. Проверка исходной директории
-  if [ ! -d "${src}" ]; then
-    log_error "Source directory ${src} does not exist"
+  # 1. Source directory (/backup)
+  if [ ! -d "/backup" ]; then
+    log_error "Source directory /backup does not exist"
     return 1
   fi
+  log_info "Source directory /backup OK"
 
-  if [ ! -r "${src}" ]; then
-    log_error "Source directory ${src} is not readable"
+  # 2. Device exists
+  local device="/dev/${USB_DEVICE}"
+
+  if [ ! -e "${device}" ]; then
+    log_error "Device ${device} does not exist"
     return 1
   fi
-
-  log_info "Source directory ${src} OK"
-
-  # 2. Проверка устройства
-  if [ ! -b "${device}" ]; then
-    log_error "Device ${device} not found or not a block device"
-    return 1
-  fi
-
   log_info "Device ${device} exists"
 
-  # 3. Проверка, что устройство смонтировано HAOS
-  if ! findmnt --source "${device}" >/dev/null 2>&1; then
-    log_error "Device ${device} is not mounted by HAOS"
+  # 3. Must be block device
+  if [ ! -b "${device}" ]; then
+    log_error "Device ${device} is not a block device"
     return 1
   fi
 
-  log_info "Device ${device} is mounted"
+  # 4. Protect system disks
+  case "${USB_DEVICE}" in
+    sda*|mmcblk0*|nvme0n1*)
+      log_error "Refusing to use system device: ${USB_DEVICE}"
+      return 1
+      ;;
+  esac
 
-  # 4. Проверка каталога назначения
-  if [ ! -d "${target}" ]; then
-    log_error "Target directory ${target} does not exist"
+  # 5. Filesystem detection
+  local fstype
+  fstype="$(lsblk -no FSTYPE "${device}" 2>/dev/null || true)"
+
+  if [ -z "${fstype}" ]; then
+    log_error "Filesystem not detected on ${device}"
     return 1
   fi
 
-  if [ ! -w "${target}" ]; then
-    log_error "Target directory ${target} is not writable"
-    return 1
-  fi
-
-  # 5. Проверка записи (touch)
-  local testfile="${target}/.backup_sync_test"
-
-  if ! touch "${testfile}" 2>/dev/null; then
-    log_error "Unable to write to ${target}"
-    return 1
-  fi
-
-  rm -f "${testfile}"
-
-  log_info "Target directory ${target} OK"
+  log_info "Device ${device} filesystem: ${fstype}"
 
   return 0
 }
