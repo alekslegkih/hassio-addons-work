@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/usr/local/backup_sync"
+BASE_DIR="/usr/local/bin/backup_sync"
 QUEUE_FILE="/tmp/backup_sync.queue"
 
 # =========================
@@ -126,73 +126,118 @@ if ! check_target; then
 fi
 
 # =========================
-# STATE 5 — INITIAL SCAN
+# STATE 5 — INITIAL SCAN (ГИБРИДНЫЙ ПОДХОД)
 # =========================
 
 if [ "${SYNC_EXIST_START}" = "true" ]; then
   log_info "Initial sync enabled, running scanner"
   
-  # Создаем FIFO для обработки событий в основном процессе
-  EVENT_FIFO="/tmp/scanner_events.fifo"
-  rm -f "$EVENT_FIFO"
-  mkfifo "$EVENT_FIFO"
+  # Временный файл для захвата событий сканера
+  SCANNER_EVENTS_FILE="/tmp/scanner_events.$$.txt"
   
-  # Запускаем scanner и обрабатываем события в основном процессе
-  python3 "${BASE_DIR}/sync/scanner.py" > "$EVENT_FIFO" &
-  SCANNER_PID=$!
+  # Запускаем scanner и захватываем все события
+  log_debug "Starting scanner, capturing events to: $SCANNER_EVENTS_FILE"
   
-  # Обрабатываем события
-  while read -r line; do
-    case "${line}" in
-      EVENT:SCANNER_STARTED)
-        log_info "Scanner started"
-        ;;
-      EVENT:SCANNER_ENQUEUED:*)
-        file="${line#EVENT:SCANNER_ENQUEUED:}"
-        state_inc TOTAL_FOUND
-        log_debug "Scanner queued: $(basename "${file}")"
-        ;;
-      EVENT:SCANNER_EMPTY)
-        log_info "No existing backups found"
-        ;;
-      EVENT:SCANNER_DONE:*)
-        count="${line#EVENT:SCANNER_DONE:}"
-        log_info "Scanner finished, queued ${count} backups"
-        ;;
-      EVENT:FATAL:*)
-        reason="${line#EVENT:FATAL:}"
-        state_set LAST_ERROR "${reason}"
-        
-        if [ -n "${NOTIFY_SERVICE:-}" ]; then
-          python3 "${NOTIFY_BIN}" fatal \
-            "Backup Sync addon stopped" \
-            "Reason: ${reason}"
-        fi
-        
-        log_fatal "Scanner fatal error: ${reason}"
-        exit 1
-        ;;
-    esac
-  done < "$EVENT_FIFO"
+  if ! python3 "${BASE_DIR}/sync/scanner.py" 2>&1 | tee "$SCANNER_EVENTS_FILE"; then
+    # Сканер завершился с ошибкой - анализируем события
+    
+    # Ищем фатальную ошибку
+    if grep -q "EVENT:FATAL:" "$SCANNER_EVENTS_FILE"; then
+      reason=$(grep "EVENT:FATAL:" "$SCANNER_EVENTS_FILE" | tail -1 | cut -d: -f3-)
+      log_error "Scanner fatal error detected: $reason"
+      state_set LAST_ERROR "Scanner: $reason"
+      
+      if [ -n "${NOTIFY_SERVICE:-}" ]; then
+        python3 "${NOTIFY_BIN}" fatal \
+          "Backup Sync addon stopped" \
+          "Reason: Scanner failed - $reason"
+      fi
+      
+      log_fatal "Scanner fatal error: $reason"
+      rm -f "$SCANNER_EVENTS_FILE"
+      exit 1
+    else
+      # Неизвестная ошибка
+      state_set LAST_ERROR "Scanner failed with unknown error"
+      
+      if [ -n "${NOTIFY_SERVICE:-}" ]; then
+        python3 "${NOTIFY_BIN}" fatal \
+          "Backup Sync addon stopped" \
+          "Reason: Scanner failed with unknown error"
+      fi
+      
+      log_fatal "Scanner failed with unknown error"
+      rm -f "$SCANNER_EVENTS_FILE"
+      exit 1
+    fi
+  fi
   
-  wait "$SCANNER_PID"
-  rm -f "$EVENT_FIFO"
+  # Сканер завершился успешно - анализируем результаты
+  
+  # Подсчитываем найденные файлы
+  found_count=$(grep -c "EVENT:SCANNER_ENQUEUED:" "$SCANNER_EVENTS_FILE" 2>/dev/null || echo 0)
+  
+  if [ "$found_count" -gt 0 ]; then
+    log_info "Scanner queued $found_count backup(s)"
+    
+    # Обновляем статистику найденных файлов
+    log_debug "Updating TOTAL_FOUND by $found_count"
+    for ((i=0; i<found_count; i++)); do
+      state_inc TOTAL_FOUND
+    done
+    
+    # Проверяем результат SCANNER_DONE
+    if grep -q "EVENT:SCANNER_DONE:" "$SCANNER_EVENTS_FILE"; then
+      scanner_count=$(grep "EVENT:SCANNER_DONE:" "$SCANNER_EVENTS_FILE" | tail -1 | cut -d: -f3)
+      if [ "$scanner_count" -ne "$found_count" ]; then
+        log_warn "Scanner count mismatch: reported $scanner_count, but found $found_count ENQUEUED events"
+      fi
+    fi
+  else
+    # Проверяем, было ли событие SCANNER_EMPTY
+    if grep -q "EVENT:SCANNER_EMPTY" "$SCANNER_EVENTS_FILE"; then
+      log_info "No existing backups found"
+    else
+      log_info "Scanner completed, no backups were queued"
+    fi
+  fi
+  
+  # Очищаем временный файл
+  rm -f "$SCANNER_EVENTS_FILE"
+  log_debug "Scanner completed successfully"
 fi
 
 # =========================
-# STATE 6 — WATCHER (запуск в фоне, НО обработка через очередь)
+# STATE 6 — ЗАПУСК WATCHER В ФОНЕ (УПРОЩЕННЫЙ ПОДХОД)
 # =========================
 
 log_info "Starting watcher in background"
 
-# Запускаем watcher в фоне
-python3 "${BASE_DIR}/sync/watcher.py" > /tmp/watcher.log 2>&1 &
+# Запускаем watcher в фоне, перенаправляем вывод в лог
+WATCHER_LOG="/tmp/watcher.$$.log"
+log_debug "Watcher log: $WATCHER_LOG"
+
+python3 "${BASE_DIR}/sync/watcher.py" > "$WATCHER_LOG" 2>&1 &
 WATCHER_PID=$!
 
-# Ждем, чтобы убедиться, что watcher запустился
-sleep 2
+# Даем watcher время на запуск
+log_debug "Waiting for watcher to start (PID: $WATCHER_PID)"
+sleep 3
+
+# Проверяем, что watcher запустился
 if ! kill -0 "$WATCHER_PID" 2>/dev/null; then
-  state_set LAST_ERROR "Watcher failed to start"
+  # Watcher не запустился - проверяем лог на ошибки
+  if [ -f "$WATCHER_LOG" ]; then
+    if grep -q "EVENT:FATAL:" "$WATCHER_LOG"; then
+      reason=$(grep "EVENT:FATAL:" "$WATCHER_LOG" | tail -1 | cut -d: -f3-)
+      log_error "Watcher fatal error: $reason"
+      state_set LAST_ERROR "Watcher: $reason"
+    else
+      state_set LAST_ERROR "Watcher failed to start"
+    fi
+  else
+    state_set LAST_ERROR "Watcher failed to start (no log)"
+  fi
   
   if [ -n "${NOTIFY_SERVICE:-}" ]; then
     python3 "${NOTIFY_BIN}" fatal \
@@ -204,7 +249,7 @@ if ! kill -0 "$WATCHER_PID" 2>/dev/null; then
   exit 1
 fi
 
-log_info "Watcher started with PID: ${WATCHER_PID}"
+log_info "Watcher started successfully with PID: $WATCHER_PID"
 
 # =========================
 # STATE 7 — ГЛАВНЫЙ ЦИКЛ ОБРАБОТКИ ОЧЕРЕДИ
@@ -213,9 +258,20 @@ log_info "Watcher started with PID: ${WATCHER_PID}"
 log_info "Initialization complete. Entering main loop."
 
 while true; do
-  # Проверяем, жив ли watcher
+  # Периодически проверяем, жив ли watcher
   if ! kill -0 "$WATCHER_PID" 2>/dev/null; then
-    state_set LAST_ERROR "Watcher process died"
+    # Watcher умер - проверяем лог на ошибки
+    if [ -f "$WATCHER_LOG" ]; then
+      if grep -q "EVENT:FATAL:" "$WATCHER_LOG"; then
+        reason=$(grep "EVENT:FATAL:" "$WATCHER_LOG" | tail -1 | cut -d: -f3-)
+        log_error "Watcher died with fatal error: $reason"
+        state_set LAST_ERROR "Watcher died: $reason"
+      else
+        state_set LAST_ERROR "Watcher process died unexpectedly"
+      fi
+    else
+      state_set LAST_ERROR "Watcher process died (no log)"
+    fi
     
     if [ -n "${NOTIFY_SERVICE:-}" ]; then
       python3 "${NOTIFY_BIN}" fatal \
@@ -229,7 +285,10 @@ while true; do
   
   # Обрабатываем очередь
   if [ -s "${QUEUE_FILE}" ]; then
+    # Читаем первый файл из очереди
     read -r backup_file < "${QUEUE_FILE}"
+    
+    # Удаляем обработанную строку из очереди
     sed -i '1d' "${QUEUE_FILE}"
     
     filename="$(basename "${backup_file}")"
@@ -238,47 +297,52 @@ while true; do
     # Проверяем, существует ли файл
     if [ ! -f "${backup_file}" ]; then
       log_warn "Backup file disappeared: ${filename}"
+      state_set LAST_ERROR "File disappeared: ${filename}"
       continue
     fi
     
-    # Обновляем статистику - НАЙДЕН файл
-    # Эта статистика будет обновляться и из scanner, и при обработке новых файлов
-    state_inc TOTAL_FOUND
-    
-    # Пытаемся скопировать
+    # Копируем файл
     if copy_backup "${backup_file}"; then
-      # Очищаем старые бэкапы
-      cleanup_backups
+      # Успешное копирование
+      log_info "Backup copied successfully: ${filename}"
       
-      # Обновляем статистику
+      # Очищаем старые бэкапы (если нужно)
+      if cleanup_backups; then
+        log_debug "Cleanup completed"
+      else
+        log_warn "Cleanup had issues"
+      fi
+      
+      # ОБНОВЛЯЕМ СТАТИСТИКУ
       state_inc TOTAL_COPIED
       state_set LAST_BACKUP "${filename}"
       state_set LAST_SYNC_TIME "$(date +%s)"
       state_set LAST_ERROR ""
       
-      # Уведомление об успехе
+      # УВЕДОМЛЕНИЕ ОБ УСПЕХЕ
       if [ -n "${NOTIFY_SERVICE:-}" ]; then
         python3 "${NOTIFY_BIN}" success \
           "Backup saved successfully" \
           "File: ${filename}"
       fi
       
-      log_info "Backup ${filename} copied successfully"
     else
-      # Обновляем статистику ошибок
+      # Ошибка копирования
+      log_error "Backup copy failed: ${filename}"
+      
+      # ОБНОВЛЯЕМ СТАТИСТИКУ ОШИБОК
       state_inc TOTAL_FAILED
       state_set LAST_ERROR "Copy failed: ${filename}"
       
-      # Уведомление об ошибке
+      # УВЕДОМЛЕНИЕ ОБ ОШИБКЕ
       if [ -n "${NOTIFY_SERVICE:-}" ]; then
         python3 "${NOTIFY_BIN}" error \
           "Backup copy failed" \
           "File: ${filename}"
       fi
-      
-      log_error "Backup copy failed: ${filename}"
     fi
+  else
+    # Очередь пуста - небольшая пауза
+    sleep 10
   fi
-  
-  sleep 5
 done

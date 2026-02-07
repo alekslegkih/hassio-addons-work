@@ -1,6 +1,6 @@
 name: "Backup Sync to USB"
 description: "Automatically copies Home Assistant backups to connected USB storage"
-version: "0.2.26"
+version: "0.2.27"
 slug: "backup_sync"
 
 arch:
