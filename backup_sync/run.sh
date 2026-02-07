@@ -135,10 +135,15 @@ if [ "${SYNC_EXIST_START}" = "true" ]; then
   # Временный файл для захвата событий сканера
   SCANNER_EVENTS_FILE="/tmp/scanner_events.$$.txt"
   
-  # Запускаем scanner и захватываем все события
+  # Запускаем scanner и захватываем все события в файл
+  # СКРЫВАЕМ stdout/stderr от пользователя
   log_debug "Starting scanner, capturing events to: $SCANNER_EVENTS_FILE"
   
-  if ! python3 "${BASE_DIR}/sync/scanner.py" 2>&1 | tee "$SCANNER_EVENTS_FILE"; then
+  # Запускаем scanner и перенаправляем вывод в файл
+  python3 "${BASE_DIR}/sync/scanner.py" > "$SCANNER_EVENTS_FILE" 2>&1
+  SCANNER_EXIT_CODE=$?
+  
+  if [ $SCANNER_EXIT_CODE -ne 0 ]; then
     # Сканер завершился с ошибкой - анализируем события
     
     # Ищем фатальную ошибку
@@ -158,15 +163,16 @@ if [ "${SYNC_EXIST_START}" = "true" ]; then
       exit 1
     else
       # Неизвестная ошибка
-      state_set LAST_ERROR "Scanner failed with unknown error"
+      error_output=$(head -c 500 "$SCANNER_EVENTS_FILE" 2>/dev/null || echo "Unknown error")
+      state_set LAST_ERROR "Scanner failed: $error_output"
       
       if [ -n "${NOTIFY_SERVICE:-}" ]; then
         python3 "${NOTIFY_BIN}" fatal \
           "Backup Sync addon stopped" \
-          "Reason: Scanner failed with unknown error"
+          "Reason: Scanner failed with error"
       fi
       
-      log_fatal "Scanner failed with unknown error"
+      log_fatal "Scanner failed with exit code: $SCANNER_EXIT_CODE"
       rm -f "$SCANNER_EVENTS_FILE"
       exit 1
     fi
@@ -208,7 +214,7 @@ if [ "${SYNC_EXIST_START}" = "true" ]; then
 fi
 
 # =========================
-# STATE 6 — ЗАПУСК WATCHER В ФОНЕ (УПРОЩЕННЫЙ ПОДХОД)
+# STATE 6 — ЗАПУСК WATCHER В ФОНЕ
 # =========================
 
 log_info "Starting watcher in background"
