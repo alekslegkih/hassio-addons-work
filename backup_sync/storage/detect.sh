@@ -36,11 +36,7 @@ detect_devices() {
         fi
 
         # Формируем строку для вывода
-        if [ -n "${label}" ]; then
-          echo "${base_name} (${fstype}, ${size}, ${label})"
-        else
-          echo "${base_name} (${fstype}, ${size})"
-        fi
+          log_info "${base_name} (${fstype}, ${size})"
     done
 }
 
