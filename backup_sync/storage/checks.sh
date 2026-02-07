@@ -44,3 +44,34 @@ check_storage() {
 
   return 0
 }
+
+check_target() {
+  local target="/media/${MOUNT_POINT}"
+
+  log_info "Checking target directory ${target}"
+
+  # 1. Exists
+  if [ ! -d "${target}" ]; then
+    log_error "Target directory ${target} does not exist"
+    return 1
+  fi
+
+  # 2. Is mountpoint
+  if ! findmnt --target "${target}" >/dev/null 2>&1; then
+    log_error "Target ${target} is not a mountpoint"
+    return 1
+  fi
+
+  # 3. Writable test
+  local testfile="${target}/.write_test"
+
+  if ! touch "${testfile}" 2>/dev/null; then
+    log_error "Target ${target} is not writable"
+    return 1
+  fi
+
+  rm -f "${testfile}"
+
+  log_info "Target directory ${target} OK"
+  return 0
+}
