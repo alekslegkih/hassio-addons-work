@@ -176,53 +176,33 @@ log_info "Watcher started successfully with PID: $WATCHER_PID"
 if [ "${SYNC_EXIST_START}" = "true" ]; then
   log_info "Initial sync enabled, running scanner"
   
-  # Временный файл для событий (без FIFO - проще)
-  SCANNER_EVENTS="/tmp/scanner_events.$$.txt"
-  
-  # Запускаем scanner
-  python3 "${BASE_DIR}/sync/scanner.py" "${MOUNT_POINT}" > "$SCANNER_EVENTS" 2>&1
-  SCANNER_EXIT=$?
-  
-  if [ $SCANNER_EXIT -ne 0 ]; then
-    # Ошибка scanner
-    if grep -q "EVENT:FATAL:" "$SCANNER_EVENTS"; then
-      reason=$(grep "EVENT:FATAL:" "$SCANNER_EVENTS" | tail -1 | cut -d: -f3-)
-      log_error "Scanner fatal error: $reason"
-      state_set LAST_ERROR "Scanner: $reason"
-      
-      if [ -n "${NOTIFY_SERVICE:-}" ]; then
-        python3 "${NOTIFY_BIN}" fatal \
-          "Backup Sync addon stopped" \
-          "Reason: Scanner failed - $reason"
-      fi
-      
-      log_fatal "Scanner fatal error: $reason"
-      exit 1
-    fi
-  fi
-  
-  # Логируем результаты
-  new_count=$(grep -c "EVENT:SCANNER_ENQUEUED:" "$SCANNER_EVENTS" 2>/dev/null || echo 0)
-  skipped_count=$(grep -c "EVENT:SCANNER_SKIPPED:" "$SCANNER_EVENTS" 2>/dev/null || echo 0)
-  
-  if [ "$new_count" -gt 0 ]; then
-    log_info "Scanner queued $new_count new backup(s)"
-    # Обновляем статистику
-    for ((i=0; i<new_count; i++)); do
-      state_inc TOTAL_FOUND
+  # Просто запускаем scanner, события игнорируем
+  # Scanner сам пишет в очередь, мы только логируем факт запуска
+  python3 "${BASE_DIR}/sync/scanner.py" "${MOUNT_POINT}" 2>&1 | \
+    while read -r line; do
+      case "$line" in
+        EVENT:SCANNER_ENQUEUED:*)
+          file="${line#EVENT:SCANNER_ENQUEUED:}"
+          state_inc TOTAL_FOUND
+          log_debug "Scanner queued: $(basename "$file")"
+          ;;
+        EVENT:SCANNER_SKIPPED:*)
+          file="${line#EVENT:SCANNER_SKIPPED:}"
+          [ "$LOG_LEVEL" = "debug" ] && log_debug "Scanner skipped: $file"
+          ;;
+        EVENT:SCANNER_DONE:*)
+          count="${line#EVENT:SCANNER_DONE:}"
+          log_info "Scanner completed: queued $count new backup(s)"
+          ;;
+        EVENT:FATAL:*)
+          reason="${line#EVENT:FATAL:}"
+          log_fatal "Scanner error: $reason"
+          exit 1
+          ;;
+      esac
     done
-  fi
   
-  if [ "$skipped_count" -gt 0 ]; then
-    log_info "Scanner skipped $skipped_count already existing backup(s)"
-  fi
-  
-  if [ "$new_count" -eq 0 ] && [ "$skipped_count" -gt 0 ]; then
-    log_info "All backups already exist on USB"
-  fi
-  
-  rm -f "$SCANNER_EVENTS"
-  log_info "Scanner completed"
+  log_info "Scanner finished"
 fi
 
 # =========================
@@ -261,7 +241,8 @@ while true; do
   if [ -s "${QUEUE_FILE}" ]; then
     # Читаем первый файл из очереди
     read -r backup_file < "${QUEUE_FILE}"
-    
+    state_inc TOTAL_FOUND
+
     # Удаляем обработанную строку из очереди
     sed -i '1d' "${QUEUE_FILE}"
     
