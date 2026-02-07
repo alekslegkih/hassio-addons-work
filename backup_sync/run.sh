@@ -39,6 +39,7 @@ trap 'state_dump' EXIT
 # Startup
 # =========================
 
+log_info "--------------------------------------------"
 log_info "Backup Sync addon starting..."
 
 load_config
