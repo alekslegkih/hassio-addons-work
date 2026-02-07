@@ -96,7 +96,6 @@ if ! mount_usb; then
   exit 1
 fi
 
-
 # =========================
 # Initial scan (scanner.py)
 # =========================
