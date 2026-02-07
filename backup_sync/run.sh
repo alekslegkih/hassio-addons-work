@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/usr/local/backup_sync"
+BASE_DIR="/usr/local/bin/backup_sync"
 QUEUE_FILE="/tmp/backup_sync.queue"
 
 # =========================
