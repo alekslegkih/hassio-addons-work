@@ -74,6 +74,17 @@ fi
 # Checks & mount
 # =========================
 
+log_info "Waiting for Supervisor mounts"
+
+for i in 1..N:
+    if /backup exists:
+        break
+    sleep 5
+
+if /backup still not exists:
+    fatal
+
+
 if ! check_storage; then
   state_set LAST_ERROR "Storage checks failed"
 
