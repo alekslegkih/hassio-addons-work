@@ -73,36 +73,6 @@ if [ -z "${USB_DEVICE:-}" ]; then
 fi
 
 # =========================
-# STATE 1.5 — WAIT FOR SUPERVISOR MOUNTS
-# =========================
-
-log_info "Waiting for Supervisor mounts (/backup)"
-
-SUPERVISOR_WAIT_MAX=600   # seconds
-SUPERVISOR_WAIT_STEP=5
-elapsed=0
-
-while [ ! -d "/backups" ]; do
-  if [ "${elapsed}" -ge "${SUPERVISOR_WAIT_MAX}" ]; then
-    state_set LAST_ERROR "Supervisor mount /backup not available"
-
-    if [ -n "${NOTIFY_SERVICE:-}" ]; then
-      python3 "${NOTIFY_BIN}" fatal \
-        "Backup Sync addon stopped" \
-        "Reason: /backup not available"
-    fi
-
-    log_fatal "/backup directory not available after ${SUPERVISOR_WAIT_MAX}s"
-    exit 1
-  fi
-
-  sleep "${SUPERVISOR_WAIT_STEP}"
-  elapsed=$((elapsed + SUPERVISOR_WAIT_STEP))
-done
-
-log_info "/backup is available"
-
-# =========================
 # STATE 2 — CHECK STORAGE
 # =========================
 
