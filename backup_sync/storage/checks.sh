@@ -1,39 +1,44 @@
 #!/usr/bin/env bash
 
-# =========================
-# Storage sanity checks
-# =========================
-
-set -euo pipefail
-
 check_storage() {
-
-  local source="/backup"
+  local src="/backup"
+  local device="/dev/${USB_DEVICE}"
   local target="/media/${MOUNT_POINT}"
 
-  log_info "Checking source and target directories"
+  log_info "Running storage checks"
 
-  # --- Source checks ---
-  if [ ! -d "${source}" ]; then
-    log_error "Source directory ${source} does not exist"
+  # 1. Проверка исходной директории
+  if [ ! -d "${src}" ]; then
+    log_error "Source directory ${src} does not exist"
     return 1
   fi
 
-  if [ ! -r "${source}" ]; then
-    log_error "Source directory ${source} is not readable"
+  if [ ! -r "${src}" ]; then
+    log_error "Source directory ${src} is not readable"
     return 1
   fi
 
-  log_debug "Source directory ${source} OK"
+  log_info "Source directory ${src} OK"
 
-  # --- Target checks ---
+  # 2. Проверка устройства
+  if [ ! -b "${device}" ]; then
+    log_error "Device ${device} not found or not a block device"
+    return 1
+  fi
+
+  log_info "Device ${device} exists"
+
+  # 3. Проверка, что устройство смонтировано HAOS
+  if ! findmnt --source "${device}" >/dev/null 2>&1; then
+    log_error "Device ${device} is not mounted by HAOS"
+    return 1
+  fi
+
+  log_info "Device ${device} is mounted"
+
+  # 4. Проверка каталога назначения
   if [ ! -d "${target}" ]; then
     log_error "Target directory ${target} does not exist"
-    return 1
-  fi
-
-  if ! mountpoint -q "${target}"; then
-    log_error "Target directory ${target} is not a mount point"
     return 1
   fi
 
@@ -42,23 +47,17 @@ check_storage() {
     return 1
   fi
 
-  log_debug "Target directory ${target} OK"
+  # 5. Проверка записи (touch)
+  local testfile="${target}/.backup_sync_test"
 
-  # --- Free space check (soft) ---
-  local free_space
-  free_space=$(df -Pk "${target}" | awk 'NR==2 {print $4}')
-
-  if [ -z "${free_space}" ] || [ "${free_space}" -le 0 ]; then
-    log_error "Unable to determine free space on ${target}"
+  if ! touch "${testfile}" 2>/dev/null; then
+    log_error "Unable to write to ${target}"
     return 1
   fi
 
-  log_info "Free space on target: $((free_space / 1024)) MB"
+  rm -f "${testfile}"
+
+  log_info "Target directory ${target} OK"
 
   return 0
 }
-
-# Для ручного запуска
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
-  check_storage
-fi

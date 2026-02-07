@@ -71,21 +71,12 @@ if [ -z "${USB_DEVICE}" ]; then
 fi
 
 # =========================
-# Mount & checks
+# Checks & mount
 # =========================
-
-if ! mount_usb; then
-  state_set LAST_ERROR "USB mount failed"
-  python3 "${NOTIFY_BIN}" fatal \
-    "Backup Sync addon stopped" \
-    "Reason: USB mount failed"
-
-  log_fatal "USB mount failed"
-  exit 1
-fi
 
 if ! check_storage; then
   state_set LAST_ERROR "Storage checks failed"
+
   python3 "${NOTIFY_BIN}" fatal \
     "Backup Sync addon stopped" \
     "Reason: Storage checks failed"
@@ -93,6 +84,18 @@ if ! check_storage; then
   log_fatal "Storage checks failed"
   exit 1
 fi
+
+if ! mount_usb; then
+  state_set LAST_ERROR "USB bind-mount failed"
+
+  python3 "${NOTIFY_BIN}" fatal \
+    "Backup Sync addon stopped" \
+    "Reason: USB bind-mount failed"
+
+  log_fatal "USB bind-mount failed"
+  exit 1
+fi
+
 
 # =========================
 # Initial scan (scanner.py)
