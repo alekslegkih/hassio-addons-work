@@ -14,9 +14,9 @@ detect_devices() {
   log_info "Scanning available storage devices..."
 
   # Получаем список partition:
-  # NAME TYPE FSTYPE SIZE LABEL
-  lsblk -pn -o NAME,TYPE,FSTYPE,SIZE,LABEL \
-    | while read -r name type fstype size label; do
+  # NAME TYPE FSTYPE SIZE
+  lsblk -pn -o NAME,TYPE,FSTYPE,SIZE \
+    | while read -r name type fstype size; do
 
         # Нас интересуют только partition
         [ "${type}" != "part" ] && continue
