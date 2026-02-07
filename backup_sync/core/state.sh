@@ -4,7 +4,7 @@
 # State management
 # =========================
 
-STATE_FILE="${ADDON_DATA}/state.env"
+STATE_FILE="/data/state.env"
 
 # Значения по умолчанию
 state_defaults() {
