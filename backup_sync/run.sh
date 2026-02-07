@@ -140,7 +140,7 @@ if [ "${SYNC_EXIST_START}" = "true" ]; then
   log_debug "Starting scanner, capturing events to: $SCANNER_EVENTS_FILE"
   
   # Запускаем scanner и перенаправляем вывод в файл
-  python3 "${BASE_DIR}/sync/scanner.py" > "$SCANNER_EVENTS_FILE" 2>&1
+  python3 "${BASE_DIR}/sync/scanner.py" "${MOUNT_POINT}" > "$SCANNER_EVENTS_FILE" 2>&1
   SCANNER_EXIT_CODE=$?
   
   if [ $SCANNER_EXIT_CODE -ne 0 ]; then
