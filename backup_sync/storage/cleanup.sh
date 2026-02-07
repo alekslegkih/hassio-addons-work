@@ -18,14 +18,10 @@ cleanup_backups() {
   log_info "Running cleanup in ${target_dir}"
   log_info "Keeping last ${MAX_COPIES} backups"
 
-  # Получаем список backup-файлов по времени (новые сверху)
+  # Получаем список backup-файлов (новые сверху)
   mapfile -t backups < <(
-    find "${target_dir}" -maxdepth 1 -type f \
-      \( -name "*.tar" -o -name "*.tar.gz" \) \
-      -printf "%T@ %p\n" \
-      | sort -rn \
-      | awk '{print $2}'
-  )
+    ls -1t "${target_dir}"/*.tar "${target_dir}"/*.tar.gz 2>/dev/null || true
+)
 
   local total="${#backups[@]}"
 
