@@ -1,6 +1,6 @@
 name: "Backup Sync to USB"
 description: "Automatically copies Home Assistant backups to connected USB storage"
-version: "0.2.18"
+version: "0.2.19"
 slug: "backup_sync"
 
 arch:
@@ -54,7 +54,7 @@ homeassistant_api: true
 hassio_role: homeassistant
 
 map:
-  - backups:ro
+  - backup:ro
   - addon_config:rw
   - media:rw
 

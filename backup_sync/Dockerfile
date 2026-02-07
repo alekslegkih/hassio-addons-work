@@ -13,7 +13,8 @@ RUN apk add --no-cache \
     blkid \
     jq \
     python3 \
-    py3-pip
+    py3-pip \
+    mc
 
 # Python зависимости (watchdog + уведомления)
 RUN python3 -m pip install --no-cache-dir \
