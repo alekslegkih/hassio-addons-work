@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/usr/local/bin/backup_sync"
+BASE_DIR="/usr/local/backup_sync"
 QUEUE_FILE="/tmp/backup_sync.queue"
 
 # =========================
@@ -126,91 +126,109 @@ if ! check_target; then
 fi
 
 # =========================
-# STATE 5 — INITIAL SCAN (ГИБРИДНЫЙ ПОДХОД)
+# STATE 5 — INITIAL SCAN 
 # =========================
 
 if [ "${SYNC_EXIST_START}" = "true" ]; then
   log_info "Initial sync enabled, running scanner"
   
-  # Временный файл для захвата событий сканера
-  SCANNER_EVENTS_FILE="/tmp/scanner_events.$$.txt"
+  # Создаем именованный канал для обработки событий в основном процессе
+  SCANNER_FIFO="/tmp/scanner_fifo.$$"
+  rm -f "$SCANNER_FIFO"
+  mkfifo "$SCANNER_FIFO"
   
-  # Запускаем scanner и захватываем все события в файл
-  # СКРЫВАЕМ stdout/stderr от пользователя
-  log_debug "Starting scanner, capturing events to: $SCANNER_EVENTS_FILE"
+  # Запускаем scanner, пишем в FIFO
+  python3 "${BASE_DIR}/sync/scanner.py" "${MOUNT_POINT}" > "$SCANNER_FIFO" 2>&1 &
+  SCANNER_PID=$!
   
-  # Запускаем scanner и перенаправляем вывод в файл
-  python3 "${BASE_DIR}/sync/scanner.py" "${MOUNT_POINT}" > "$SCANNER_EVENTS_FILE" 2>&1
+  # Обрабатываем события в основном процессе
+  NEW_COUNT=0
+  SKIPPED_COUNT=0
+  
+  while read -r line; do
+    case "${line}" in
+      EVENT:SCANNER_STARTED)
+        log_info "Scanner started"
+        ;;
+      EVENT:SCANNER_TARGET:*)
+        target="${line#EVENT:SCANNER_TARGET:}"
+        log_debug "Scanner target: $target"
+        ;;
+      EVENT:SCANNER_ENQUEUED:*)
+        file="${line#EVENT:SCANNER_ENQUEUED:}"
+        state_inc TOTAL_FOUND
+        NEW_COUNT=$((NEW_COUNT + 1))
+        log_debug "Scanner queued: $(basename "${file}")"
+        ;;
+      EVENT:SCANNER_SKIPPED:*)
+        file="${line#EVENT:SCANNER_SKIPPED:}"
+        SKIPPED_COUNT=$((SKIPPED_COUNT + 1))
+        [ "$LOG_LEVEL" = "debug" ] && log_debug "Scanner skipped: $file"
+        ;;
+      EVENT:SCANNER_SKIPPED_COUNT:*)
+        count="${line#EVENT:SCANNER_SKIPPED_COUNT:}"
+        log_info "Scanner skipped $count already existing backup(s)"
+        ;;
+      EVENT:SCANNER_FOUND:*)
+        total="${line#EVENT:SCANNER_FOUND:}"
+        log_debug "Total backups found: $total"
+        ;;
+      EVENT:SCANNER_EXISTING:*)
+        existing="${line#EVENT:SCANNER_EXISTING:}"
+        log_debug "Existing backups on USB: $existing"
+        ;;
+      EVENT:SCANNER_EMPTY)
+        log_info "No backups found in /backup"
+        ;;
+      EVENT:SCANNER_ALL_EXIST)
+        log_info "All backups already exist on USB"
+        ;;
+      EVENT:SCANNER_DONE:*)
+        count="${line#EVENT:SCANNER_DONE:}"
+        if [ "$count" -eq 0 ]; then
+          log_info "Scanner completed, no new backups found"
+        else
+          log_info "Scanner queued $count new backup(s)"
+        fi
+        ;;
+      EVENT:FATAL:*)
+        reason="${line#EVENT:FATAL:}"
+        log_error "Scanner fatal error: $reason"
+        state_set LAST_ERROR "Scanner: $reason"
+        
+        if [ -n "${NOTIFY_SERVICE:-}" ]; then
+          python3 "${NOTIFY_BIN}" fatal \
+            "Backup Sync addon stopped" \
+            "Reason: Scanner failed - $reason"
+        fi
+        
+        # Убиваем процесс scanner если он еще жив
+        kill $SCANNER_PID 2>/dev/null || true
+        rm -f "$SCANNER_FIFO"
+        log_fatal "Scanner fatal error: $reason"
+        exit 1
+        ;;
+      *)
+        # Неизвестное событие - логируем только в debug
+        [ "$LOG_LEVEL" = "debug" ] && log_debug "Unknown scanner event: $line"
+        ;;
+    esac
+  done < "$SCANNER_FIFO"
+  
+  # Ждем завершения scanner процесса
+  wait $SCANNER_PID
   SCANNER_EXIT_CODE=$?
   
-  if [ $SCANNER_EXIT_CODE -ne 0 ]; then
-    # Сканер завершился с ошибкой - анализируем события
-    
-    # Ищем фатальную ошибку
-    if grep -q "EVENT:FATAL:" "$SCANNER_EVENTS_FILE"; then
-      reason=$(grep "EVENT:FATAL:" "$SCANNER_EVENTS_FILE" | tail -1 | cut -d: -f3-)
-      log_error "Scanner fatal error detected: $reason"
-      state_set LAST_ERROR "Scanner: $reason"
-      
-      if [ -n "${NOTIFY_SERVICE:-}" ]; then
-        python3 "${NOTIFY_BIN}" fatal \
-          "Backup Sync addon stopped" \
-          "Reason: Scanner failed - $reason"
-      fi
-      
-      log_fatal "Scanner fatal error: $reason"
-      rm -f "$SCANNER_EVENTS_FILE"
-      exit 1
-    else
-      # Неизвестная ошибка
-      error_output=$(head -c 500 "$SCANNER_EVENTS_FILE" 2>/dev/null || echo "Unknown error")
-      state_set LAST_ERROR "Scanner failed: $error_output"
-      
-      if [ -n "${NOTIFY_SERVICE:-}" ]; then
-        python3 "${NOTIFY_BIN}" fatal \
-          "Backup Sync addon stopped" \
-          "Reason: Scanner failed with error"
-      fi
-      
-      log_fatal "Scanner failed with exit code: $SCANNER_EXIT_CODE"
-      rm -f "$SCANNER_EVENTS_FILE"
-      exit 1
-    fi
+  # Очищаем FIFO
+  rm -f "$SCANNER_FIFO"
+  
+  if [ $SCANNER_EXIT_CODE -ne 0 ] && [ $SCANNER_EXIT_CODE -ne 141 ]; then
+    # 141 = SIGPIPE, нормально при закрытии FIFO
+    log_error "Scanner exited with code: $SCANNER_EXIT_CODE"
+    state_set LAST_ERROR "Scanner exited with code: $SCANNER_EXIT_CODE"
   fi
   
-  # Сканер завершился успешно - анализируем результаты
-  
-  # Подсчитываем найденные файлы
-  found_count=$(grep -c "EVENT:SCANNER_ENQUEUED:" "$SCANNER_EVENTS_FILE" 2>/dev/null || echo 0)
-  
-  if [ "$found_count" -gt 0 ]; then
-    log_info "Scanner queued $found_count backup(s)"
-    
-    # Обновляем статистику найденных файлов
-    log_debug "Updating TOTAL_FOUND by $found_count"
-    for ((i=0; i<found_count; i++)); do
-      state_inc TOTAL_FOUND
-    done
-    
-    # Проверяем результат SCANNER_DONE
-    if grep -q "EVENT:SCANNER_DONE:" "$SCANNER_EVENTS_FILE"; then
-      scanner_count=$(grep "EVENT:SCANNER_DONE:" "$SCANNER_EVENTS_FILE" | tail -1 | cut -d: -f3)
-      if [ "$scanner_count" -ne "$found_count" ]; then
-        log_warn "Scanner count mismatch: reported $scanner_count, but found $found_count ENQUEUED events"
-      fi
-    fi
-  else
-    # Проверяем, было ли событие SCANNER_EMPTY
-    if grep -q "EVENT:SCANNER_EMPTY" "$SCANNER_EVENTS_FILE"; then
-      log_info "No existing backups found"
-    else
-      log_info "Scanner completed, no backups were queued"
-    fi
-  fi
-  
-  # Очищаем временный файл
-  rm -f "$SCANNER_EVENTS_FILE"
-  log_debug "Scanner completed successfully"
+  log_debug "Scanner completed"
 fi
 
 # =========================
