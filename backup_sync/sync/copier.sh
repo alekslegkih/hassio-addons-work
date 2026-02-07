@@ -33,12 +33,15 @@ copy_backup() {
   filename="$(basename "${source_file}")"
   local target_file="${target_dir}/${filename}"
 
+  if [ -f "${target_file}" ]; then
+    log_info "Backup already exists on USB, skipping: ${filename}"
+    return 0  # Уже есть - считаем успехом
+  fi
+
   log_info "Starting copy: ${filename}"
 
   local attempt=1
   while [ "${attempt}" -le "${RETRY_COUNT}" ]; do
-
-    log_info "Copy attempt ${attempt}/${RETRY_COUNT}"
 
     local start_ts
     start_ts=$(date +%s)
@@ -56,6 +59,8 @@ copy_backup() {
 
       log_info "Copy completed: ${filename}"
       log_info "Size: ${size_mb} MB, Time: ${duration}s"
+      
+      log_debug"Copy attempt ${attempt}/${RETRY_COUNT}"
 
       return 0
     fi
