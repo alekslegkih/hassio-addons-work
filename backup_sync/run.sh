@@ -78,7 +78,7 @@ fi
 
 log_info "Waiting for Supervisor mounts (/backup)"
 
-SUPERVISOR_WAIT_MAX=60   # seconds
+SUPERVISOR_WAIT_MAX=3660   # seconds
 SUPERVISOR_WAIT_STEP=5
 elapsed=0
 
