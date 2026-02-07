@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
 check_storage() {
-  log_info "Running storage checks"
-
   # 1. Source directory (/backup)
   if [ ! -d "/backup" ]; then
     log_error "Source directory /backup does not exist"

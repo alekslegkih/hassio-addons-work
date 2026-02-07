@@ -4,46 +4,50 @@ mount_usb() {
   local device="/dev/${USB_DEVICE}"
   local target="/media/${MOUNT_POINT}"
 
-  log_info "Checking mount state for ${device}"
+  log_info "Preparing USB mount"
+  log_info "  Device : ${device}"
+  log_info "  Target : ${target}"
 
-  # 1. Проверяем, смонтирован ли девайс вообще
-  if ! findmnt --source "${device}" >/dev/null 2>&1; then
-    log_error "Device ${device} is not mounted by HAOS"
-    return 1
+  # Ensure target directory exists
+  if [ ! -d "${target}" ]; then
+    log_info "Creating target directory ${target}"
+    mkdir -p "${target}" || {
+      log_error "Failed to create target directory ${target}"
+      return 1
+    }
   fi
 
-  # 2. Получаем реальную точку монтирования
-  local real_mount
-  real_mount="$(findmnt -n -o TARGET --source "${device}")"
-
-  if [ -z "${real_mount}" ]; then
-    log_error "Unable to determine mount point for ${device}"
-    return 1
-  fi
-
-  log_info "Device ${device} already mounted at ${real_mount}"
-
-  # 3. Если пользовательский mount_point совпадает — всё ок
-  if [ "${real_mount}" = "${target}" ]; then
-    log_info "Mount point matches configured path (${target})"
-    return 0
-  fi
-
-  # 4. Проверяем, не сделан ли уже bind-mount
+  # 1. Target already mounted → OK
   if findmnt --target "${target}" >/dev/null 2>&1; then
-    log_info "Target ${target} already mounted"
+    log_info "Target ${target} is already mounted"
     return 0
   fi
 
-  # 5. Делаем bind-mount
-  log_info "Bind-mounting ${real_mount} to ${target}"
-  mkdir -p "${target}"
+  # 2. Device already mounted somewhere → bind-mount
+  local src_mount
+  src_mount="$(findmnt -n -o TARGET --source "${device}" 2>/dev/null || true)"
 
-  if mount --bind "${real_mount}" "${target}"; then
-    log_info "Bind-mount successful"
+  if [ -n "${src_mount}" ]; then
+    log_info "Device ${device} already mounted at ${src_mount}"
+    log_info "Bind-mounting ${src_mount} → ${target}"
+
+    if mount --bind "${src_mount}" "${target}"; then
+      log_info "Bind-mount successful"
+      return 0
+    else
+      log_error "Bind-mount failed"
+      return 1
+    fi
+  fi
+
+  # 3. Device not mounted anywhere → mount directly
+  log_info "Device ${device} not mounted, mounting directly to ${target}"
+
+  if mount "${device}" "${target}"; then
+    log_info "Direct mount successful"
     return 0
   fi
 
-  log_error "Bind-mount failed"
+  log_error "Failed to mount ${device} to ${target}"
   return 1
 }
