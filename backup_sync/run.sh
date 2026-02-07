@@ -78,11 +78,11 @@ fi
 
 log_info "Waiting for Supervisor mounts (/backup)"
 
-SUPERVISOR_WAIT_MAX=3660   # seconds
+SUPERVISOR_WAIT_MAX=600   # seconds
 SUPERVISOR_WAIT_STEP=5
 elapsed=0
 
-while [ ! -d "/backup" ]; do
+while [ ! -d "/backups" ]; do
   if [ "${elapsed}" -ge "${SUPERVISOR_WAIT_MAX}" ]; then
     state_set LAST_ERROR "Supervisor mount /backup not available"
 
