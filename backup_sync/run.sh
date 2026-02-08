@@ -129,7 +129,7 @@ fi
 # STATE 5 — ЗАПУСК WATCHER ПЕРВЫМ (ВСЕГДА)
 # =========================
 
-log_info "Starting watcher (always first)"
+log_info "Starting watcher"
 
 # Запускаем watcher в фоне, перенаправляем вывод в лог
 WATCHER_LOG="/tmp/watcher.$$.log"

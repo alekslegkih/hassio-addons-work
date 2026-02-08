@@ -60,7 +60,7 @@ copy_backup() {
       log_info "Copy completed: ${filename}"
       log_info "Size: ${size_mb} MB, Time: ${duration}s"
       
-      log_debug"Copy attempt ${attempt}/${RETRY_COUNT}"
+      log_debug "Copy attempt ${attempt}/${RETRY_COUNT}"
 
       return 0
     fi
