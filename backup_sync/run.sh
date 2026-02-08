@@ -260,14 +260,7 @@ while true; do
     if copy_backup "${backup_file}"; then
       # Успешное копирование
       log_info "Backup copied successfully: ${filename}"
-      
-      # Очищаем старые бэкапы (если нужно)
-      if cleanup_backups; then
-        log_debug "Cleanup completed"
-      else
-        log_warn "Cleanup had issues"
-      fi
-      
+          
       # ОБНОВЛЯЕМ СТАТИСТИКУ
       state_inc TOTAL_COPIED
       state_set LAST_BACKUP "${filename}"
@@ -297,7 +290,14 @@ while true; do
       fi
     fi
   else
+    # Очищаем старые бэкапы (если нужно)
+    if cleanup_backups; then
+      log_debug "Cleanup completed"
+    else
+      log_warn "Cleanup had issues"
+    fi
+
     # Очередь пуста - небольшая пауза
-    sleep 10
+    sleep 5
   fi
 done
